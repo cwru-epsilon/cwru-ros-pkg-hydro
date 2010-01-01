@@ -811,7 +811,7 @@ double DesStateGenerator::compute_omega_profile() {
     ROS_WARN("current_seg_phi_des == %f", current_seg_phi_des_);
     ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
     ROS_WARN("I have to go == %f", current_seg_length_to_go_);//current_phi_togo);
-    
+    ROS_WARN("ODOM PHI == %f", odom_phi_);
     if (fabs(current_seg_length_to_go_) <= HEADING_TOL ) {//fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
         scheduled_omega=0.0;
     }
