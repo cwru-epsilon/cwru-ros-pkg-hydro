@@ -872,7 +872,11 @@ double DesStateGenerator::compute_omega_profile() {
 //    }
     
     double new_cmd_omega = speedCompare(fabs(odom_omega_), scheduled_omega, true, dt_); 
-    
+    double des_omega = (rot_to_go < 0.0) ? (-1)*new_cmd_omega : new_cmd_omega;
+	
+ 	if (floor(rot_to_go*100)/100 == 0.0 || percent_left < 1.0) { //uh-oh...went too far already!
+        des_omega = 0.0; //command omega=0
+    }
     //Here is the check for stops or lidar detection...
     if (pause_soft || pause_hard || pause_lidar) {
         print_all = false;
@@ -896,7 +900,7 @@ double DesStateGenerator::compute_omega_profile() {
     print_hard = true;
     print_lidar = true;
     
-    double des_omega = sgn(current_seg_curvature_)*new_cmd_omega;
+    //des_omega = sgn(current_seg_curvature_)*new_cmd_omega;
     ROS_INFO("compute_omega_profile: des_omega = %f ",des_omega);
     return des_omega;  // spin in direction of closest rotation to target heading
 }
