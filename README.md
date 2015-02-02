@@ -28,6 +28,7 @@
 - 3) Make sure that you put COMMENTS on your code by and YOUR NAME along with the comment.
 - 4) Save and try to do a CWRU_MAKE to make sure your code does NOT have any errors.
 - Note: It's better to do a cwru_make for each small part of the code. In order to not get lost with errors...
+- Note: Dont forget to change the CMakeLists.txt to include your modified file...***
  
 - 5) Push Your Repo...
  
