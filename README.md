@@ -6,6 +6,7 @@ For Password, ask me ;)
 - Pulling or (Fetching) rules:
  1) On every sit for work on our repo, you should do a fetch for (Our Repo) and the Upstream Repo (Class).
  Note: You should make sure that you have the upstream link configured by doing (git remote -v).
+
  Note: If not configured, you can do it by command: (git remote add upstream CWRU-ROBOT-FOR_REPO-HERE)
 
  2) Coomand to fetch our repo is as follows: (make sure you are in the directory)
