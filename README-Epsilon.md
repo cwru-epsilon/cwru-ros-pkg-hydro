@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # cwru-ros-pkg-hydro-epsilon
 
 - Hello Team Epsilon (Ɛ)
@@ -47,3 +48,10 @@
 - 4) And you are DONE for the day... :)
 -   
 
+=======
+# cwru-ros-pkg-hydro
+Updated version of cwru-ros-pkg for hydro support.
+Your forked repositories should sync with updates from this repository from now on.
+
+Check the wiki for useful information!
+>>>>>>> upstream/master
