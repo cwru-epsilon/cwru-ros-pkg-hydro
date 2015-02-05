@@ -1,10 +1,10 @@
-<<<<<<< HEAD
+
 # cwru-ros-pkg-hydro-epsilon
 
-- Hello Team Epsilon (Ɛ)
-- For Password, ask me ;)
+# Hello Team Epsilon (Ɛ)
+For Password, ask me ;)
 
-- @ Pulling or (Fetching) rules:
+## Pulling or (Fetching) rules:
 - 1) On every sit for work on our repo, you should do a fetch for (Our Repo) and the Upstream Repo (Class).
 - Note: You should make sure that you have the upstream link configured by doing (git remote -v).
 - Note: If not configured, you can do it by command: (git remote add upstream CWRU-ROBOT-FOR_REPO-HERE)
@@ -20,7 +20,7 @@
 - 4) After that you will have the updated repo with all codes and files...
  
 
-- @@ Working-On-Our-Repo Rules:)
+## Working-On-Our-Repo Rules:)
 - 1) Every file you work on has to be a COPY of the original included in the ros_workspace ********
 - 2) Rename the copy as follows:
 -   Original:   vel_scheduler.cpp
@@ -33,7 +33,7 @@
  
 - 5) Push Your Repo...
  
-- @@@ Pushing (to the Cloud) rules:
+## Pushing (to the Cloud) rules:
 - 1) After you make sure that you DID all the ABOVE, then proceed...*****
 - 2) Do the push commands.
 - 3) Commands are: (make sure you are in the directory)
