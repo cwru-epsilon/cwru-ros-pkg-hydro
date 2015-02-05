@@ -11,7 +11,7 @@ For Password, ask me ;)
 
 - 2) Coomand to fetch our repo is as follows: (make sure you are in the directory)
 -   git fetch;
--   git merge origin/upstream
+-   git merge origin/master
  
 - 3) Command to fetch Class Repo;
 -   git fetch upstream
