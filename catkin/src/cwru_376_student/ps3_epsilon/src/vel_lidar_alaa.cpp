@@ -47,7 +47,11 @@ ros::Time t_last_callback_;
 double dt_callback_=0.0;
 
 const double MIN_SAFE_DISTANCE = 0.5;
-bool pause_ = false;
+bool pause_soft = false;
+bool pause_hard = false;
+bool pause_lidar = false;
+double rem_dist_ = 0.0;
+bool rot_value;
 
 // receive odom messages and strip off the components we want to use
 // tested this OK w/ stdr
@@ -84,7 +88,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate ) {
 } 
 
 // The masterLoop method handles the node from main() and takes either a length forward or phi to rotate to. a boolean was defined to distinguish between the two...
-void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi) {
+double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi) {
     
     //Initialization
 //---------------------------------------------------------------------------------------
@@ -140,30 +144,16 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
     //double R_dist_decel = 0.5 * alpha_max * (R_decel * R_decel);
 //-----------------------------------------------------------------------------------
 //----------------------Pausing The Robot--------------------------------------------    
+    
     //rostopic pub [topic] [msg_type] [args]
     //rostopic pub soft_estop std_msgs/Bool 'true' // To toggle the soft Estop from Terminal
-    
-    
-    
-    
-    
-    //while(ros::ok() && pause_) {
-        //cmd_vel.linear.x = 0.0; // Pause the robot.
-        //cmd_vel.angular.z = 0.0;
-        //scheduled_vel = 0.0;
-        //scheduled_omega = 0.0;
-        //ros::spinOnce();  // allow callbacks to populate fresh data
-    
-    //}
-    
-    
-    
+   
     
 //-----------------------------------------------------------------------------------    
 // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     while (ros::ok() && rotate == false )
        {
-        if (pause_==false) {
+        //if (pause_ == false) {
         ros::spinOnce(); // allow callbacks to populate fresh data
     // compute distance travelled so far:
         double delta_x = odom_x_ - start_x;
@@ -193,25 +183,36 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
         if (dist_to_go <= 0.0) { //uh-oh...went too far already!
             cmd_vel.linear.x = 0.0; //command vel=0
         }
+        while (pause_soft) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_hard) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_lidar) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
+        ROS_WARN("pause_ in the end : %i", pause_soft);
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.
-        }
+        rem_dist_ = dist_to_go;
+        rot_value = rotate;
         
         
-        else if (pause_) {
-            
-            ROS_WARN("IM HERE........");
-        cmd_vel.linear.x = 0.0; // Pause the robot.
-        cmd_vel.angular.z = 0.0;
-        scheduled_vel = 0.0;
-        scheduled_omega = 0.0;
-        ros::spinOnce();  // allow callbacks to populate fresh data
-        }
-        
+
     }
      
-    while (ros::ok() && rotate == true && pause_ == false) // WHEN THERE IS ROTATION $$$$$$$$$$$$$$$$
+    while (ros::ok() && rotate == true) // WHEN THERE IS ROTATION $$$$$$$$$$$$$$$$
     {
         ros::spinOnce(); // allow callbacks to populate fresh data
         rotation_done = odom_phi_ - start_phi;
@@ -240,6 +241,24 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
         if (floor(rot_to_go*100)/100 == 0.0) { //uh-oh...went too far already!
              cmd_vel.angular.z = 0.0; //command omega=0
         }
+        while (pause_soft) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_hard) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_lidar) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_omega
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (floor(rot_to_go*100)/100 == 0.0) break; // halt this node when this segment is complete.
@@ -250,38 +269,38 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
 void hardEstopCallback (const std_msgs::Bool& estop_hard) {
     if (estop_hard.data == true) {
         ROS_WARN("Hard Estop was triggered and ON (Robot is stopped)");
-        pause_ = true;
+        pause_hard = true;
     }
-    else if (estop_hard.data == false && pause_ == true) {
+    else if (estop_hard.data == false && pause_hard == true) {
         ROS_WARN("Hard Estop was triggered and OFF (Robot is in motion) :)");
-        pause_ = false;
+        pause_hard = false;
     }
-    else pause_ = false;
+    //else pause_ = false;
 }
 
 void laserMsgCallback (const std_msgs::Float32& dist) {
     ROS_INFO("Lidar: distance to obstacle is %f", dist.data);
     if (dist.data<MIN_SAFE_DISTANCE) {
         ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
-        pause_ = true;
+        pause_lidar = true;
     }
-    else pause_ = false;
+    else if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
     
 }
+
 void softEstopCallback (const std_msgs::Bool& estop_soft) {
-    ROS_WARN("estop_soft ------------- %i", estop_soft.data);
     if (estop_soft.data == true) {
         ROS_WARN("Soft Estop was triggered and ON");
-        pause_ = true;
+        pause_soft = true;
     }
-    else if (estop_soft.data == false && pause_ == true) {
+    else if (estop_soft.data == false && pause_soft == true) {
         ROS_WARN("Soft Estop was triggered and OFF :)");
-        pause_ = false;
+        pause_soft = false;
+        //if (rot_value) masterLoop(nh, 0.0, true, rem_dist_);
+        //else masterLoop(nh, rem_dist_, false, 0.0 );
+        
     }
-    else pause_ = false;
-    
-    ROS_WARN("pause_ ------------- %i", pause_, pause_);
-}
+ }
 
 void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 //here's a trick to compute the delta-time between successive callbacks:
@@ -313,7 +332,7 @@ int main(int argc, char **argv) {
     ros::Subscriber vel_sub = nh.subscribe("/robot0/odom", 1, odomCallback);
     ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback);
     ros::Subscriber soft_estop = nh.subscribe("soft_estop", 1, softEstopCallback);
-    ros::Subscriber hard_estop = nh.subscribe("hard_estop", 1, hardEstopCallback);
+    ros::Subscriber hard_estop = nh.subscribe("hardware_estop", 1, hardEstopCallback);
 // here is a description of five segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
     masterLoop(nh, 4.7, false, 0.0);
