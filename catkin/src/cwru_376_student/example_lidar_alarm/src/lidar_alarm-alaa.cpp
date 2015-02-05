@@ -4,6 +4,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Float32.h> //Including the Float32 class from std_msgs
 #include <std_msgs/Bool.h> // boolean message time
+#include <thread>
 
 
 const double MIN_SAFE_DISTANCE = 0.5; // set alarm if anything is within 0.5m of the front of robot
@@ -34,6 +35,8 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         // what is the index of the ping that is straight ahead?
         // BETTER would be to use transforms, which would reference how the LIDAR is mounted;
         // but this will do for simple illustration
+        ROS_INFO("angle_min_= %f, angle_max_= %f, angle_inc_= %f", angle_min_, angle_max_, angle_increment_);
+        ROS_INFO("range_min_= %f, range_max_= %f", range_min_, range_max_);
         ping_index_ = (int) (0.0 -angle_min_)/angle_increment_;
         ROS_INFO("LIDAR setup: ping_index = %d",ping_index_);
         
@@ -55,17 +58,26 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
    lidar_dist_msg.data = ping_dist_in_front_;
    lidar_dist_publisher_.publish(lidar_dist_msg);   
 }
-
-int main(int argc, char **argv) {
-    ros::init(argc, argv, "lidar_alarm"); //name this node
-    ros::NodeHandle nh; 
-    //create a Subscriber object and have it subscribe to the lidar topic
+void runLidarThread(ros::NodeHandle& nh) {
     ros::Publisher pub = nh.advertise<std_msgs::Bool>("lidar_alarm", 1);
     lidar_alarm_publisher_ = pub; // let's make this global, so callback can use it
     ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);  
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("robot0/laser_0", 1, laserCallback);
     ros::spin(); //this is essentially a "while(1)" statement, except it
+}
+void printST() {
+    ROS_INFO("Iam HERE............");
+}
+
+int main(int argc, char **argv) {
+    ros::init(argc, argv, "lidar_alarm"); //name this node
+    ros::NodeHandle nh; 
+    ros::Subscriber lidar_subscriber = nh.subscribe("robot0/laser_0", 1, laserCallback);
+    //create a Subscriber object and have it subscribe to the lidar topic
+    std::thread t1(runLidarThread,nh);
+    std::thread t2(printST);
+    t1.join();
+    t2.join();
     // forces refreshing wakeups upon new data arrival
     // main program essentially hangs here, but it must stay alive to keep the callback function alive
     return 0; // should never get here, unless roscore dies
