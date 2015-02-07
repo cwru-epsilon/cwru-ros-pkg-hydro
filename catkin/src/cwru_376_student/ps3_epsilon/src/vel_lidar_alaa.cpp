@@ -1,9 +1,25 @@
+
+// The original code credit goes to: cwru-robotics team
+// https://github.com/cwru-robotics/
+// Dr. Wyatt Newman
+// Engr. Luc Battaieb
+
+// This project is one of EECS378 Mobile Robotic assignments, Spring 2015.
+
+// This project was edited in order to modulate the velocity (linear and angular) command to comply with a speed limit, v_max and omega_max,
+// acceleration limits, +/-a_max and +/-alpha_max, and come to a halt gracefully at the end of each intended segment...
+
+// Project Team: (Team Epsilon ε)
+// - Alaa Badokhon
+// - Josh Immerman
+// - Dongyu Wu
+// - Eric Carlson
+// https://github.com/cwru-epsilon
+
 // try this, e.g. with roslaunch stdr_launchers server_with_map_and_gui_plus_robot.launch
 // or: roslaunch cwru_376_launchers stdr_glennan_2.launch
 // watch resulting velocity commands with: rqt_plot /robot0/cmd_vel/linear/x (or jinx/cmd_vel...)
-//intent of this program: modulate the velocity command to comply with a speed limit, v_max,
-// acceleration limits, +/-a_max, and come to a halt gracefully at the end of
-// an intended line segment
+
 // notes on quaternions:
 /*
 From:
@@ -327,17 +343,18 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 
 int main(int argc, char **argv) {
 
-    ros::init(argc, argv, "vel_lidar_alaa"); // name of this node will be "minimal_publisher1"
+    ros::init(argc, argv, "vel_sched_epsilon"); // name of this node will be "vel_sched_epsilon"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
-    ros::Subscriber vel_sub = nh.subscribe("/robot0/odom", 1, odomCallback);
-    ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback);
-    ros::Subscriber soft_estop = nh.subscribe("soft_estop", 1, softEstopCallback);
-    ros::Subscriber hard_estop = nh.subscribe("hardware_estop", 1, hardEstopCallback);
+    ros::Subscriber vel_sub = nh.subscribe("/robot0/odom", 1, odomCallback); // Subscribing to robot0/odom (which has to be changed to jinx/odom for actual robot simulation).
+    ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback); // Subscribing to lider_dist, which is published or advertised by lidar_alarm_epsilon.cpp
+    ros::Subscriber soft_estop = nh.subscribe("soft_estop", 1, softEstopCallback); // Subscribing to soft_estop, which is published by the user (manually on the terminal)
+    ros::Subscriber hard_estop = nh.subscribe("hardware_estop", 1, hardEstopCallback); // Subscribing to hardware_estop, which is published by estop_listener_epsilon.cpp
+
 // here is a description of five segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
     masterLoop(nh, 4.7, false, 0.0);
     masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, 12.4, false, 0.0);
+    masterLoop(nh, 12.4, false, 0.0); // Should be changed to match hallway (up to ramp...) 6m.
     masterLoop(nh, 0.0, true, -1.57);
     masterLoop(nh, 9.0, false, 0.0);
     ROS_INFO("completed move distance");
