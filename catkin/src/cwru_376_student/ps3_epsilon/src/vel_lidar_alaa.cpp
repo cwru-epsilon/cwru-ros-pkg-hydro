@@ -1,9 +1,25 @@
+
+// The original code credit goes to: cwru-robotics team
+// https://github.com/cwru-robotics/
+// Dr. Wyatt Newman
+// Engr. Luc Battaieb
+
+// This project is one of EECS378 Mobile Robotic assignments, Spring 2015.
+
+// This project was edited in order to modulate the velocity (linear and angular) command to comply with a speed limit, v_max and omega_max,
+// acceleration limits, +/-a_max and +/-alpha_max, and come to a halt gracefully at the end of each intended segment...
+
+// Project Team: (Team Epsilon ε)
+// - Alaa Badokhon
+// - Josh Immerman
+// - Dongyu Wu
+// - Eric Carlson
+// https://github.com/cwru-epsilon
+
 // try this, e.g. with roslaunch stdr_launchers server_with_map_and_gui_plus_robot.launch
 // or: roslaunch cwru_376_launchers stdr_glennan_2.launch
 // watch resulting velocity commands with: rqt_plot /robot0/cmd_vel/linear/x (or jinx/cmd_vel...)
-//intent of this program: modulate the velocity command to comply with a speed limit, v_max,
-// acceleration limits, +/-a_max, and come to a halt gracefully at the end of
-// an intended line segment
+
 // notes on quaternions:
 /*
 From:
@@ -22,9 +38,11 @@ therefore, theta = 2*atan2(qz,qw)
 */
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Float32.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <math.h>
+#include <std_msgs/Bool.h>
 // set some dynamic limits...
 const double v_max = 5.0; //1m/sec is a slow walk
 const double v_min = 0.1; // if command velocity too low, robot won't move
@@ -43,6 +61,14 @@ double odom_phi_ = 0.0;
 double dt_odom_ = 0.0;
 ros::Time t_last_callback_;
 double dt_callback_=0.0;
+
+const double MIN_SAFE_DISTANCE = 0.5;
+bool pause_soft = false;
+bool pause_hard = false;
+bool pause_lidar = false;
+double rem_dist_ = 0.0;
+bool rot_value;
+
 // receive odom messages and strip off the components we want to use
 // tested this OK w/ stdr
 // receive the pose and velocity estimates from the simulator (or the physical robot)
@@ -78,7 +104,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate ) {
 } 
 
 // The masterLoop method handles the node from main() and takes either a length forward or phi to rotate to. a boolean was defined to distinguish between the two...
-void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi) {
+double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi) {
     
     //Initialization
 //---------------------------------------------------------------------------------------
@@ -133,10 +159,17 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
     //double R_dist_accel = 0.5 * alpha_max * (R_accel * R_accel);
     //double R_dist_decel = 0.5 * alpha_max * (R_decel * R_decel);
 //-----------------------------------------------------------------------------------
+//----------------------Pausing The Robot--------------------------------------------    
     
+    //rostopic pub [topic] [msg_type] [args]
+    //rostopic pub soft_estop std_msgs/Bool 'true' // To toggle the soft Estop from Terminal
+   
+    
+//-----------------------------------------------------------------------------------    
 // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
-    while (ros::ok() && rotate == false)
+    while (ros::ok() && rotate == false )
        {
+        //if (pause_ == false) {
         ros::spinOnce(); // allow callbacks to populate fresh data
     // compute distance travelled so far:
         double delta_x = odom_x_ - start_x;
@@ -166,10 +199,33 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
         if (dist_to_go <= 0.0) { //uh-oh...went too far already!
             cmd_vel.linear.x = 0.0; //command vel=0
         }
+        while (pause_soft) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_hard) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_lidar) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
+        ROS_WARN("pause_ in the end : %i", pause_soft);
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.
+        rem_dist_ = dist_to_go;
+        rot_value = rotate;
         
+        
+
     }
      
     while (ros::ok() && rotate == true) // WHEN THERE IS ROTATION $$$$$$$$$$$$$$$$
@@ -201,12 +257,67 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
         if (floor(rot_to_go*100)/100 == 0.0) { //uh-oh...went too far already!
              cmd_vel.angular.z = 0.0; //command omega=0
         }
+        while (pause_soft) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_hard) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
+        while (pause_lidar) {
+            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+        }
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_omega
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (floor(rot_to_go*100)/100 == 0.0) break; // halt this node when this segment is complete.
         
     }
 }
+
+void hardEstopCallback (const std_msgs::Bool& estop_hard) {
+    if (estop_hard.data == true) {
+        ROS_WARN("Hard Estop was triggered and ON (Robot is stopped)");
+        pause_hard = true;
+    }
+    else if (estop_hard.data == false && pause_hard == true) {
+        ROS_WARN("Hard Estop was triggered and OFF (Robot is in motion) :)");
+        pause_hard = false;
+    }
+    //else pause_ = false;
+}
+
+void laserMsgCallback (const std_msgs::Float32& dist) {
+    ROS_INFO("Lidar: distance to obstacle is %f", dist.data);
+    if (dist.data<MIN_SAFE_DISTANCE) {
+        ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
+        pause_lidar = true;
+    }
+    else if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
+    
+}
+
+void softEstopCallback (const std_msgs::Bool& estop_soft) {
+    if (estop_soft.data == true) {
+        ROS_WARN("Soft Estop was triggered and ON");
+        pause_soft = true;
+    }
+    else if (estop_soft.data == false && pause_soft == true) {
+        ROS_WARN("Soft Estop was triggered and OFF :)");
+        pause_soft = false;
+        //if (rot_value) masterLoop(nh, 0.0, true, rem_dist_);
+        //else masterLoop(nh, rem_dist_, false, 0.0 );
+        
+    }
+ }
+
 void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 //here's a trick to compute the delta-time between successive callbacks:
     dt_callback_ = (ros::Time::now() - t_last_callback_).toSec();
@@ -232,14 +343,18 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 
 int main(int argc, char **argv) {
 
-    ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
+    ros::init(argc, argv, "vel_sched_epsilon"); // name of this node will be "vel_sched_epsilon"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
-    ros::Subscriber sub = nh.subscribe("/robot0/odom", 1, odomCallback);
+    ros::Subscriber vel_sub = nh.subscribe("/robot0/odom", 1, odomCallback); // Subscribing to robot0/odom (which has to be changed to jinx/odom for actual robot simulation).
+    ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback); // Subscribing to lider_dist, which is published or advertised by lidar_alarm_epsilon.cpp
+    ros::Subscriber soft_estop = nh.subscribe("soft_estop", 1, softEstopCallback); // Subscribing to soft_estop, which is published by the user (manually on the terminal)
+    ros::Subscriber hard_estop = nh.subscribe("hardware_estop", 1, hardEstopCallback); // Subscribing to hardware_estop, which is published by estop_listener_epsilon.cpp
+
 // here is a description of five segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
-    masterLoop(nh, 4.6, false, 0.0);
+    masterLoop(nh, 4.7, false, 0.0);
     masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, 12.4, false, 0.0);
+    masterLoop(nh, 12.4, false, 0.0); // Should be changed to match hallway (up to ramp...) 6m.
     masterLoop(nh, 0.0, true, -1.57);
     masterLoop(nh, 9.0, false, 0.0);
     ROS_INFO("completed move distance");
