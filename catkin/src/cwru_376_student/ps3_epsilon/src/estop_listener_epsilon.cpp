@@ -1,3 +1,21 @@
+
+// The original code credit goes to: cwru-robotics team
+// https://github.com/cwru-robotics/
+// Dr. Wyatt Newman
+// Engr. Luc Battaieb
+
+// This project is one of EECS378 Mobile Robotics assignments, Spring 2015.
+
+// This project was edited in order to modulate the velocity (linear and angular) commands to comply with a speed limit, v_max and omega_max,
+// acceleration limits, +/-a_max and +/-alpha_max, and come to a halt gracefully at the end of each intended segment...
+
+// Project Team: (Team Epsilon ε)
+// - Alaa Badokhon
+// - Josh Immerman
+// - Dongyu Wu
+// - Eric Carlson
+// https://github.com/cwru-epsilon
+
 #include <ros/ros.h>
 #include <cwru_msgs/Pose.h>
 #include <iostream>
@@ -39,7 +57,7 @@ int main(int argc, char **argv)
 	 * You must call one of the versions of ros::init() before using any other
 	 * part of the ROS system.
 	 */
-	ros::init(argc, argv, "estop_listener_alaa");
+	ros::init(argc, argv, "estop_listener_epsilon");
 
 	/**
 	 * NodeHandle is the main access point to communications with the ROS system.

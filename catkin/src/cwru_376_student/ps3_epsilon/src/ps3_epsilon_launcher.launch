@@ -1,11 +1,11 @@
 <launch>
 	
 	
-	<node type="vel_lidar_alaa" pkg="ps3_epsilon" name="vel_lidar_alaa" output="screen"/>
+	<node type="vel_sched_epsilon" pkg="ps3_epsilon" name="vel_sched_epsilon" output="screen"/>
 	
-	<node type="lidar_alarm_alaa" pkg="ps3_epsilon" name="lidar_alarm_alaa"/>
+	<node type="lidar_alarm_epsilon" pkg="ps3_epsilon" name="lidar_alarm_epsilon"/>
 	
-	<node type="estop_listener_alaa" pkg="ps3_epsilon" name="estop_listener_alaa"/>
+	<node type="estop_listener_epsilon" pkg="ps3_epsilon" name="estop_listener_epsilon"/>
 	
 
 </launch>

@@ -1,4 +1,20 @@
-// wsn example program to illustrate LIDAR processing.  1/23/15
+
+// The original code credit goes to: cwru-robotics team
+// https://github.com/cwru-robotics/
+// Dr. Wyatt Newman
+// Engr. Luc Battaieb
+
+// This project is one of EECS378 Mobile Robotics assignments, Spring 2015.
+
+// This project was edited in order to modulate the velocity (linear and angular) commands to comply with a speed limit, v_max and omega_max,
+// acceleration limits, +/-a_max and +/-alpha_max, and come to a halt gracefully at the end of each intended segment...
+
+// Project Team: (Team Epsilon ε)
+// - Alaa Badokhon
+// - Josh Immerman
+// - Dongyu Wu
+// - Eric Carlson
+// https://github.com/cwru-epsilon
 
 #include <ros/ros.h> //Must include this for all ROS cpp projects
 #include <sensor_msgs/LaserScan.h>
@@ -57,14 +73,14 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
 }
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "lidar_alarm_alaa"); //name this node
+    ros::init(argc, argv, "lidar_alarm_epsilon"); //name this node
     ros::NodeHandle nh; 
     //create a Subscriber object and have it subscribe to the lidar topic
     ros::Publisher pub = nh.advertise<std_msgs::Bool>("lidar_alarm", 1);
     lidar_alarm_publisher_ = pub; // let's make this global, so callback can use it
     ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);  
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("robot0/laser_0", 1, laserCallback);
+    ros::Subscriber lidar_subscriber = nh.subscribe("/base_laser1_scan", 1, laserCallback); // robot0/laser_0 for simulation robot.   
     ros::spin(); //this is essentially a "while(1)" statement, except it
     // forces refreshing wakeups upon new data arrival
     // main program essentially hangs here, but it must stay alive to keep the callback function alive

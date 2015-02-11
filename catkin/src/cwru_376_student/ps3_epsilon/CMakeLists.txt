@@ -15,9 +15,9 @@ catkin_simple()
 # cs_add_libraries(my_lib src/my_lib.cpp)   
 
 # Executables
-cs_add_executable(lidar_alarm_alaa src/lidar_alarm_alaa.cpp)
-cs_add_executable(estop_listener_alaa src/estop_listener_alaa.cpp)
-cs_add_executable(vel_lidar_alaa src/vel_lidar_alaa.cpp)
+cs_add_executable(lidar_alarm_epsilon src/lidar_alarm_epsilon.cpp)
+cs_add_executable(estop_listener_epsilon src/estop_listener_epsilon.cpp)
+cs_add_executable(vel_sched_epsilon src/vel_sched_epsilon.cpp)
 # target_link_library(example my_lib)
  
 cs_install()
