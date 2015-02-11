@@ -9,7 +9,9 @@ Change this topic to jinx/cmd_vel to drive the robot "Jinx" in the lab.
 
 The code was divided into three cpp files:
 	1. vel_sched_epsilon
+
 	2. lidar_alarm_epsilon
+
 	3. estop_listener_epsilon
 
 The program "vel_sched_epsilon" is a reactive speed scheduler.  It ramps velocity up and down and will recover
@@ -23,10 +25,13 @@ The program "estop_listener_epsilon" is handling the hardware estop requests com
 ## Example usage
 You can run the program by excuting:
 'roslaunch ps3_epsilon ps3_epsilon_launcher.launch'
+
 To run the STDR simulator:  
 'roslaunch cwru_376_launchers stdr_glennan_2.launch'
+
 Then run a velocity commander, e.g.:
 'rosrun example_robot_commander vel_scheduler'
+
 Can also observe the speed commands by plotting using:
 rqt_plot /robot0/cmd_vel/linear/x
 
