@@ -1,4 +1,4 @@
-Heading
+
 =======
 
 # ps3_epsilon
@@ -8,6 +8,7 @@ The nodes are specialized to send to topic robot0/cmd_vel, which works with the 
 Change this topic to jinx/cmd_vel to drive the robot "Jinx" in the lab.
 
 The code was divided into three cpp files:
+
 	1. vel_sched_epsilon
 
 	2. lidar_alarm_epsilon
