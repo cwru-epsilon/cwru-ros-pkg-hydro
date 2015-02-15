@@ -63,7 +63,7 @@ double odom_y_ = 0.0;
 double odom_phi_ = 0.0;
 double dt_odom_ = 0.0;
 ros::Time t_last_callback_;
-double dt_callback_=0.0;
+double dt_callback_=0.00;
 
 const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
 bool pause_soft = false;
@@ -204,6 +204,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
             scheduled_vel = v_max;
         }
         
+        ROS_INFO("sched vel:--- %f", scheduled_vel);
 //------------------------------------------------------------------------------------
         // Compare Odom velocity with requested velocity and return the appropriate value
         new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false); 
@@ -224,7 +225,9 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
         }
+        cmd_vel.angular.z = 0.0;
         vel_cmd_publisher.publish(cmd_vel); // publish the command to /cmd_vel in Jinx 
+        
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.
         rem_dist_ = dist_to_go;
@@ -324,6 +327,7 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
         dt_callback_ = 0.1; // can choose to clamp a max value on this, if dt_callback is used for computations elsewhere
         ROS_WARN("large dt; dt = %lf", dt_callback_); // let's complain whenever this happens
     }
+      // ROS_WARN("dt_callback ==== %f", dt_callback_);
 // copy some of the components of the received message into global vars, for use by "main()"
 // we care about speed and spin, as well as position estimates x,y and heading
     odom_vel_ = odom_rcvd.twist.twist.linear.x;
@@ -341,7 +345,7 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 
 int main(int argc, char **argv) {
 
-    ros::init(argc, argv, "vel_sched_epsilon"); // name of this node will be "vel_sched_epsilon"
+    ros::init(argc, argv, "vel_sched_epsilon_v2"); // name of this node will be "vel_sched_epsilon"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
     ros::Subscriber vel_sub = nh.subscribe("/odom", 1, odomCallback); // Subscribing to jinx/odom (which has to be changed to jinx/odom for actual robot simulation).
     ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback); // Subscribing to lider_dist, which is published or advertised by lidar_alarm_epsilon.cpp
