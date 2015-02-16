@@ -20,9 +20,12 @@
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Float32.h> //Including the Float32 class from std_msgs
 #include <std_msgs/Bool.h> // boolean message time
+#include <string>
 
 
 const double MIN_SAFE_DISTANCE = 0.5; // set alarm if anything is within 0.5m of the front of robot
+const std::string lidarT = "/laser/scan"; // /robot0/laser_0 or "base_laser1_scan" or /laser/scan
+
 
 // these values to be set within the laser callback
 float ping_dist_in_front_=3.0; // global var to hold length of a SINGLE LIDAR ping--in front
@@ -80,7 +83,7 @@ int main(int argc, char **argv) {
     lidar_alarm_publisher_ = pub; // let's make this global, so callback can use it
     ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);  
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("base_laser1_scan", 1, laserCallback); // robot0/laser_0 for simulation robot.   
+    ros::Subscriber lidar_subscriber = nh.subscribe(lidarT, 1, laserCallback); // robot0/laser_0 for simulation robot.   
     ros::spin(); //this is essentially a "while(1)" statement, except it
     // forces refreshing wakeups upon new data arrival
     // main program essentially hangs here, but it must stay alive to keep the callback function alive
