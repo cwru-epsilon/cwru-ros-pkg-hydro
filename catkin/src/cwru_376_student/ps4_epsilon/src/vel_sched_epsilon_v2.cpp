@@ -71,7 +71,7 @@ double dt_odom_ = 0.0;
 ros::Time t_last_callback_;
 double dt_callback_=0.00;
 
-const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
+const double MIN_SAFE_DISTANCE = 1; //in meters for Lidar
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
@@ -235,12 +235,12 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
                 ROS_WARN("Stopping because of Hard Estop");
                 print_hard = false;
             }
-            if (pause_lidar) {
+            if (pause_lidar && print_lidar) {
                 ROS_WARN("Stopping because an obstacle was detected by the Lidar");
                 print_lidar = false;
             }
-            new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
-            cmd_vel.linear.x = new_cmd_vel; // 
+            //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
+            cmd_vel.linear.x = 0.0; // 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
@@ -288,7 +288,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
         }
         // If there was any trigger, stop until  that trigger is released...
         while (pause_soft || pause_hard || pause_lidar) {
-            
+            print_all = false;
             if (pause_soft && print_soft) { 
                 ROS_WARN("Stopping because of Soft Estop");
                 print_soft = false;
@@ -297,11 +297,12 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
                 ROS_WARN("Stopping because of Hard Estop");
                 print_hard = false;
             }
-            if (pause_lidar) {
+            if (pause_lidar && print_lidar) {
                 ROS_WARN("Stopping because an obstacle was detected by the Lidar");
                 print_lidar = false;
             }
-            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
+            cmd_vel.linear.x = 0.0; // 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
@@ -331,7 +332,7 @@ void hardEstopCallback (const std_msgs::Bool& estop_hard) {
 void laserMsgCallback (const std_msgs::Float32& dist) {
     //ROS_INFO("Lidar: distance to obstacle is %f", dist.data);
     if (dist.data<MIN_SAFE_DISTANCE) {
-        ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
+        if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
         pause_lidar = true;
     }
     else if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
