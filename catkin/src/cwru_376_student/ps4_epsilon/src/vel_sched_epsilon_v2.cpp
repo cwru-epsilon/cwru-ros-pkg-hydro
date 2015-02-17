@@ -71,7 +71,7 @@ double dt_odom_ = 0.0;
 ros::Time t_last_callback_;
 double dt_callback_=0.00;
 
-const double MIN_SAFE_DISTANCE = 1; //in meters for Lidar
+const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
@@ -335,8 +335,10 @@ void laserMsgCallback (const std_msgs::Float32& dist) {
         if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
         pause_lidar = true;
     }
-    else if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
-    
+    else {
+		pause_lidar = false; //if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
+		ROS_WARN("Lidar was released...");
+	}    
 }
 
 // This Callback is for handling hard estop triggers...
@@ -391,9 +393,9 @@ int main(int argc, char **argv) {
 // here is a description of some segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
     masterLoop(nh, 7.0, false, 0.0);
-    masterLoop(nh, 0.0, true, 1.57);
+    masterLoop(nh, 0.0, true, -1.57);
     masterLoop(nh, 3.5, false, 0.0);
-    masterLoop(nh, 0.0, true, 1.57);
+    masterLoop(nh, 0.0, true, -1.57);
     masterLoop(nh, 7.0, false, 0.0);
     ROS_INFO("completed move distance");
 }

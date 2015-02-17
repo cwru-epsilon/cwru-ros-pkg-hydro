@@ -23,8 +23,8 @@
 #include <string>
 
 
-const double MIN_SAFE_DISTANCE = 1; // set alarm if anything is within 0.5m of the front of robot
-const std::string lidarT = "/laser/scan"; // /robot0/laser_0 or "base_laser1_scan" or /laser/scan
+const double MIN_SAFE_DISTANCE = 0.6; // set alarm if anything is within 0.5m of the front of robot
+const std::string lidarT = "base_laser1_scan"; // /robot0/laser_0 or "base_laser1_scan" or /laser/scan
 
 
 // these values to be set within the laser callback
@@ -61,6 +61,7 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         lidar_dist_msg.data = ping_dist_in_front_;
         lidar_dist_publisher_.publish(lidar_dist_msg);  
     }
+	laser_alarm_ = false;
     std_msgs::Bool lidar_alarm_msg;
     lidar_alarm_msg.data = laser_alarm_;
     lidar_alarm_publisher_.publish(lidar_alarm_msg);
