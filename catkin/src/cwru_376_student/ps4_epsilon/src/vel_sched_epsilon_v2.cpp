@@ -335,9 +335,9 @@ void laserMsgCallback (const std_msgs::Float32& dist) {
         if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
         pause_lidar = true;
     }
-    else {
+    else if (dist.data>=MIN_SAFE_DISTANCE && pause_lidar) {
 		pause_lidar = false; //if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
-		ROS_WARN("Lidar was released...");
+		ROS_WARN("Obstacle is out of the way now... :)");
 	}    
 }
 
