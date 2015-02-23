@@ -240,12 +240,12 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
                 ROS_WARN("Stopping because of Hard Estop");
                 print_hard = false;
             }
-            if (pause_lidar) {
+            if (pause_lidar && print_lidar) {
                 ROS_WARN("Stopping because an obstacle was detected by the Lidar");
                 print_lidar = false;
             }
-            new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
-            cmd_vel.linear.x = new_cmd_vel; // 
+            //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
+            cmd_vel.linear.x = 0.0; // 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
@@ -311,7 +311,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
         }
         // If there was any trigger, stop until  that trigger is released...
         while (pause_soft || pause_hard || pause_lidar) {
-            
+            print_all = false;
             if (pause_soft && print_soft) { 
                 ROS_WARN("Stopping because of Soft Estop");
                 print_soft = false;
@@ -320,11 +320,12 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
                 ROS_WARN("Stopping because of Hard Estop");
                 print_hard = false;
             }
-            if (pause_lidar) {
+            if (pause_lidar && print_lidar) {
                 ROS_WARN("Stopping because an obstacle was detected by the Lidar");
                 print_lidar = false;
             }
-            cmd_vel.linear.x = 0.0; // initialize these values to zero
+            //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
+            cmd_vel.linear.x = 0.0; // 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
@@ -334,8 +335,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
         print_lidar = true;
         vel_cmd_publisher.publish(cmd_vel); // publish the command to jinx/cmd_omega
         rtimer.sleep(); // sleep for remainder of timed iteration
-        if (floor(rot_to_go*100)/100 == 0.0 || percent_left < 1.0) break; // halt this node when this segment is complete.
-        
+        if (floor(rot_to_go*100)/100 == 0.0 || percent_left < 1.0) break; // halt this node when this segment is complete.    
     }
 }
 // This Callback is for handling hard estop triggers (Hardware estops are handled in estop_listener_epsilon.cpp ..
@@ -357,7 +357,10 @@ void laserMsgCallback (const std_msgs::Float32& dist) {
         if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
         pause_lidar = true;
     }
-    else if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
+    else if (dist.data>=MIN_SAFE_DISTANCE && pause_lidar) {
+		pause_lidar = false; //if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
+		ROS_WARN("Obstacle is out of the way now... :)");
+	}    
 }
 
 // This Callback is for handling hard estop triggers...
@@ -371,7 +374,6 @@ void softEstopCallback (const std_msgs::Bool& estop_soft) {
         pause_soft = false;
         //if (rot_value) masterLoop(nh, 0.0, true, rem_dist_);
         //else masterLoop(nh, rem_dist_, false, 0.0 );
-        
     }
  }
 
@@ -411,10 +413,12 @@ int main(int argc, char **argv) {
 
 // here is a description of some segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
+
     masterLoop(nh, 5.5, false, 0.0);
     masterLoop(nh, 0.0, true, -1.56);
     masterLoop(nh, 12.4, false, 0.0);
-	masterLoop(nh, 0.0, true, -1.56);
-	masterLoop(nh, 4.5, false, 0.0);
+    masterLoop(nh, 0.0, true, -1.56);
+    masterLoop(nh, 4.5, false, 0.0);
+
     ROS_INFO("completed move distance");
 }
