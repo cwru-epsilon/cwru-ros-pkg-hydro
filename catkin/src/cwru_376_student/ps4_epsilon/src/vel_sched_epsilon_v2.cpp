@@ -59,8 +59,6 @@ const std::string odomT = "/odom"; // /robot0/odom or /odom
 const std::string cmd_velT = "/cmd_vel"; // robot0/cmd_vel or /cmd_vel
 
 
-//const char odomT = '/odom';
-
 // globals for communication w/ callbacks:
 double odom_vel_ = 0.0; // measured/published system speed
 double odom_omega_ = 0.0; // measured/published system yaw rate (spin)
@@ -81,6 +79,11 @@ bool print_lidar = true;
 bool print_all = true;
 double rem_dist_ = 0.0;
 bool rot_value;
+
+bool spinCheck = true;
+bool incOdomPhi = false;
+double odom_phi_old = 0.0;
+double phiDiff;
 
 // receive odom messages and strip off the components we want to use
 // tested this OK w/ stdr
@@ -175,6 +178,8 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
     double dist_decel = 0.5 * a_max * (T_decel * T_decel);; //same as ramp-up distance
     double R_accel = omega_max / alpha_max;
     double R_decel = omega_max / alpha_max;
+    
+    double spinIncrement = sqrt((start_phi+rot_phi)*(start_phi+rot_phi)); //This is the value of the spin requested after the travel... 
     //double R_dist_accel = 0.5 * alpha_max * (R_accel * R_accel);
     //double R_dist_decel = 0.5 * alpha_max * (R_decel * R_decel);
     
@@ -259,7 +264,25 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
      
     while (ros::ok() && rotate == true) // WHEN THERE IS ROTATION $$$$$$$$$$$$$$$$
     {
-        ros::spinOnce(); // Allow callbacks to populate fresh data
+        ros::spinOnce(); // Allow Callbacks to populate fresh data
+//------------------------Odom Phi Checker and Fixer------------------------------
+        if (!spinCheck) {
+            phiDiff = abs(odom_phi_ - odom_phi_old);
+            if (phiDiff >= 1) { //The moment when it begins a new circle...
+                incOdomPhi = true;
+                spinCheck = true; // Just to not go through this if statement again after this point...
+                spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
+            }
+        }
+        if (spinIncrement>6.28) {
+            odom_phi_old = odom_phi_; // To save the previous Odom Phi value (for making sure that it stays in the same travel phi...)
+            spinCheck = false;
+        }
+        else if (incOdomPhi) {
+            odom_phi_ = odom_phi_ + odom_phi_old;
+        }
+        ROS_INFO("Modified (checked) Odom_phi = %f", odom_phi_);
+//-----------------------------------------------------------------------------------        
         rotation_done = odom_phi_ - start_phi;
         ROS_INFO("Rotation Traveled: %f", rotation_done);
         double rot_to_go = rot_phi - rotation_done;
@@ -318,7 +341,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
 // This Callback is for handling hard estop triggers (Hardware estops are handled in estop_listener_epsilon.cpp ..
 void hardEstopCallback (const std_msgs::Bool& estop_hard) {
     if (estop_hard.data == true) {
-        ROS_WARN("Hard Estop was triggered and ON (Robot is stopped)");
+        if (print_hard) ROS_WARN("Hard Estop was triggered and ON (Robot is stopped)");
         pause_hard = true;
     }
     else if (estop_hard.data == false && pause_hard == true) {
@@ -331,17 +354,16 @@ void hardEstopCallback (const std_msgs::Bool& estop_hard) {
 void laserMsgCallback (const std_msgs::Float32& dist) {
     //ROS_INFO("Lidar: distance to obstacle is %f", dist.data);
     if (dist.data<MIN_SAFE_DISTANCE) {
-        ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
+        if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
         pause_lidar = true;
     }
     else if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
-    
 }
 
 // This Callback is for handling hard estop triggers...
 void softEstopCallback (const std_msgs::Bool& estop_soft) {
     if (estop_soft.data == true) {
-        ROS_WARN("Soft Estop was triggered and ON");
+        if (print_soft) ROS_WARN("Soft Estop was triggered and ON");
         pause_soft = true;
     }
     else if (estop_soft.data == false && pause_soft == true) {
@@ -389,10 +411,10 @@ int main(int argc, char **argv) {
 
 // here is a description of some segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
-    masterLoop(nh, 7.0, false, 0.0);
-    masterLoop(nh, 0.0, true, 1.57);
-    masterLoop(nh, 3.5, false, 0.0);
-    masterLoop(nh, 0.0, true, 1.57);
-    masterLoop(nh, 7.0, false, 0.0);
+    masterLoop(nh, 5.5, false, 0.0);
+    masterLoop(nh, 0.0, true, -1.56);
+    masterLoop(nh, 12.4, false, 0.0);
+	masterLoop(nh, 0.0, true, -1.56);
+	masterLoop(nh, 4.5, false, 0.0);
     ROS_INFO("completed move distance");
 }
