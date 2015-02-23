@@ -16,11 +16,11 @@ catkin_simple()
 # cs_add_libraries(my_lib src/my_lib.cpp)   
 
 # Executables
-cs_add_executable(lidar_alarm_epsilon_v2 src/lidar_alarm_epsilon_v2.cpp)
+# cs_add_executable(lidar_alarm_epsilon_v2 src/lidar_alarm_epsilon_v2.cpp)
 cs_add_executable(lidar_alarm_epsilon_v3 src/lidar_alarm_epsilon_v3.cpp)
 cs_add_executable(estop_listener_epsilon_v2 src/estop_listener_epsilon_v2.cpp)
 cs_add_executable(vel_sched_epsilon_v2 src/vel_sched_epsilon_v2.cpp)
-cs_add_executable(vel_scheduler-alaa_v2 src/vel_scheduler-alaa_v2.cpp)
+# cs_add_executable(vel_scheduler-alaa_v2 src/vel_scheduler-alaa_v2.cpp)
 
 # target_link_library(example my_lib)
  
