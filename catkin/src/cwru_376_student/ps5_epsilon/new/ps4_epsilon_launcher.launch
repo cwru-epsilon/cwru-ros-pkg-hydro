@@ -1,0 +1,11 @@
+<launch>
+	
+	
+	<node type="vel_sched_epsilon_v2" pkg="ps4_epsilon" name="vel_sched_epsilon_v2" output="screen"/>
+	
+	<node type="lidar_alarm_epsilon_v3" pkg="ps4_epsilon" name="lidar_alarm_epsilon_v3"/>
+	
+	<node type="estop_listener_epsilon_v2" pkg="ps4_epsilon" name="estop_listener_epsilon_v2"/>
+	
+
+</launch>
