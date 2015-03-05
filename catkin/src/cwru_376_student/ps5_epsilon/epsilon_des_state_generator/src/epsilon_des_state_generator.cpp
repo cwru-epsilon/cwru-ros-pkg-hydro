@@ -14,15 +14,23 @@
 
 #include "epsilon_des_state_generator.h"
 int ans;
+double scheduled_vel = 0.0;
+double scheduled_omega = 0.0;
+
+bool pause_soft = false;
+bool pause_hard = false;
+bool pause_lidar = false;
+bool print_soft = true;
+bool print_hard = true;
+bool print_lidar = true;
+bool print_all = true;
 
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
 // want to put all dirty work of initializations here
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
 
 DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehandle) { // constructor
-    ROS_INFO("in class constructor of De        segment_length_done = sqrt(delta_x * delta_x + delta_y * delta_y);
-        ROS_INFO("dist travelled: %f", segment_length_done);
-        double dist_to_go = seg_len - segment_length_done;sStateGenerator");
+    ROS_INFO("in class constructor of DesStateGenerator");
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
     initializePublishers();
     initializeServices();
@@ -38,11 +46,14 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehan
     
     dt_ = 1.0/UPDATE_RATE; // time step consistent with update frequency
     //initialize variables here, as needed
+
     
-    double T_accel = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
-    double T_decel = MAX_SPEED / MAX_ACCEL; //(for same decel as accel); assumes brake to full halt
-    double dist_accel = 0.5 * MAX_ACCEL * (T_accel * T_accel); //distance rqd to ramp up to full speed
-    double dist_decel = 0.5 * MAX_ACCEL * (T_decel * T_decel);; //same as ramp-up distance
+    T_accel = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
+    T_decel = MAX_SPEED / MAX_ACCEL; //(for same decel as accel); assumes brake to full halt
+    dist_accel = 0.5 * MAX_ACCEL * (T_accel * T_accel); //distance rqd to ramp up to full speed
+    dist_decel = 0.5 * MAX_ACCEL * (T_decel * T_decel);; //same as ramp-up distance
+    
+    
     
     des_state_ = update_des_state_halt(); // construct a command state from current odom, + zero speed/spin
     
@@ -583,12 +594,12 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     desired_state.twist.twist.linear.x = current_speed_des_; // but specified desired twist = 0.0
     desired_state.twist.twist.angular.z = current_omega_des_;
     desired_state.header.stamp = ros::Time::now();
-    
+    ROS_WARN("HALT....");
     current_path_seg_done_ = true; // let the system know we are anxious for another segment to process...
     return desired_state;         
 }
 
-double speedCompare (double odom_speed, double sched_speed, bool rotate ) {
+double speedCompare (double odom_speed, double sched_speed, bool rotate , double dt_) {
     odom_speed = sqrt(odom_speed * odom_speed); // To make it always +ve
     sched_speed = sqrt(sched_speed * sched_speed); // To make it always +ve
     double accel = MAX_ACCEL;
@@ -623,15 +634,32 @@ double DesStateGenerator::compute_speed_profile() {
     // IF there was curvature, reduce speed (ramping-down for each function call)...
     
     //use segment_length_done to decide what vel should be, as per plan
-    if (waiting_for_vertex_) { // at goal, or overshot; stop!
+    
+    
+    if (current_seg_length_to_go_<= 0.0) { // at goal, or overshot; stop!
         scheduled_vel=0.0;
     }
-    else if (!waiting_for_vertex_) { // not ready to decel, so target vel is v_max, either accel to it or hold it
-        scheduled_vel = v_max;
+    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL) {
+        ROS_WARN("%f / %f", current_seg_length_to_go_, current_seg_length_);
+        scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/2;
+        //if (scheduled_vel > MAX_SPEED);
+        //scheduled_vel = 0.0;
     }
-    double new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false); 
+    else { // not ready to decel, so target vel is v_max, either accel to it or hold it
+        scheduled_vel = MAX_SPEED;
+    }
     
-    while (pause_soft || pause_hard || pause_lidar) {
+    double new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false, dt_); 
+    
+    if (fabs(odom_omega_) > 0.05) { //We detected some angular motion and hence we want to reduce linear velocity
+        // What is done is basically if odom_omega was at its max. (0.8), 
+        // then velocity will decrease reaching (0.4), making our maximum linear speed while rotating  
+        double v_test = new_cmd_vel - odom_omega_/2;
+        new_cmd_vel = speedCompare(odom_vel_, v_test, false, dt_);
+        ROS_WARN("IM HERE");
+    }
+    
+    if (pause_soft || pause_hard || pause_lidar) {
         print_all = false;
         if (pause_soft && print_soft) { 
             ROS_WARN("Stopping because of Soft Estop");
@@ -655,24 +683,44 @@ double DesStateGenerator::compute_speed_profile() {
     return new_cmd_vel;
 }
 
-// MAKE THIS BETTER!!
 double DesStateGenerator::compute_omega_profile() {
     // We should measure Omega with respect to Curvature...
     // CHANGE rot_to_go or percentage concept with CURVATURE...
     
-    if (floor(rot_to_go*100)/100 == 0.0 || percent_left < 1.0) { // at goal, or overshot; stop!
-            scheduled_omega=0.0;
+    if (waiting_for_vertex_) { // at goal, or overshot; stop!
+        scheduled_omega=0.0;
     }
-    else if (percent_left >= 20 || percent_left <=80) { //possibly should be braking to a halt // floor(sqrt(rot_to_go*rot_to_go)*10)/10 <= floor(R_dist_decel/10)*10
-        scheduled_omega = sqrt(2 * sqrt(rot_to_go*rot_to_go) * alpha_max);
-        ROS_INFO("Rotation braking zone: omega_sched = %f",scheduled_omega);
+    else if (!waiting_for_vertex_) { // not ready to decel, so target vel is v_max, either accel to it or hold it
+        scheduled_omega = MAX_OMEGA;
     }
-    else { // not ready to decel, so target vel is v_max, either accel to it or hold it
-        scheduled_omega = omega_max;
+    
+    double new_cmd_omega = speedCompare(fabs(odom_omega_), scheduled_omega, true, dt_); 
+    
+    if (pause_soft || pause_hard || pause_lidar) {
+        print_all = false;
+        if (pause_soft && print_soft) { 
+            ROS_WARN("Stopping because of Soft Estop");
+            print_soft = false;
+        }
+        if (pause_hard && print_hard) {
+            ROS_WARN("Stopping because of Hard Estop");
+            print_hard = false;
+        }
+        if (pause_lidar && print_lidar) {
+            ROS_WARN("Stopping because an obstacle was detected by the Lidar");
+            print_lidar = false;
+        }
+        return 0.0; 
     }
-    double des_omega = sgn(current_seg_curvature_)*MAX_OMEGA;
-    ROS_INFO("compute_omega_profile: des_omega = %f",des_omega);
-    return des_omega; // spin in direction of closest rotation to target heading
+    //The function: compute_omega_profile() will be called everytime from other des_state function
+    //and will be checked and updated for every function call...
+    print_soft = true;
+    print_hard = true;
+    print_lidar = true;
+    
+    double des_omega = sgn(current_seg_curvature_)*new_cmd_omega;
+    ROS_INFO("compute_omega_profile: des_omega = %f ",des_omega);
+    return des_omega;  // spin in direction of closest rotation to target heading
 }
 
 

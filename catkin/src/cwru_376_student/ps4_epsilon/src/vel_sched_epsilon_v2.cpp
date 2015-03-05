@@ -175,7 +175,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
     double T_accel = v_max / a_max; //...assumes start from rest
     double T_decel = v_max / a_max; //(for same decel as accel); assumes brake to full halt
     double dist_accel = 0.5 * a_max * (T_accel * T_accel); //distance rqd to ramp up to full speed
-    double dist_decel = 0.5 * a_max * (T_decel * T_decel);; //same as ramp-up distance
+    double dist_decel = 0.5 * a_max * (T_decel * T_decel); //same as ramp-up distance
     double R_accel = omega_max / alpha_max;
     double R_decel = omega_max / alpha_max;
     
@@ -213,7 +213,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
         }
         else if (dist_to_go <= dist_decel) { //possibly should be braking to a halt
             scheduled_vel = sqrt(2 * dist_to_go * a_max);
-		ROS_WARN("Breaking ZOne: %f", scheduled_vel);
+            ROS_WARN("Breaking ZOne: %f", scheduled_vel);
         }
         else { // not ready to decel, so target vel is v_max, either accel to it or hold it
             scheduled_vel = v_max;

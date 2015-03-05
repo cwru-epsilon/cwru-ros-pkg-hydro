@@ -53,13 +53,14 @@ const int SPIN_IN_PLACE = cwru_msgs::PathSegment::SPIN_IN_PLACE;
 // dynamic limitations
 const double MAX_SPEED = 0.8; // m/sec;
 const double MAX_OMEGA = 0.8; //1.0; // rad/sec;
-const double MAX_ACCEL = 0.15; // m/sec^2;
-const double MAX_ALPHA = 0.15; // rad/sec^2;
+const double MAX_ACCEL = 0.3; // m/sec^2;
+const double MAX_ALPHA = 0.3; // rad/sec^2;
 
-const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
-const double HEADING_TOL = 0.05; // heading tolerance; adjust this
+const double LENGTH_TOL = 0.001; // tolerance for path; It was ADJUSTED to our needs for operation on GAZEBO
+const double HEADING_TOL = 0.001; // heading tolerance; It was ADJUSTED to our needs for operation on GAZEBO
 
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
+const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
 
 // define a class, including a constructor, member variables and member functions
 
@@ -123,19 +124,14 @@ private:
     double odom_phi_;
     geometry_msgs::Quaternion odom_quat_;
     
-    double scheduled_vel = 0.0;
-    double scheduled_omega = 0.0;
+
     
     // Adding robot pause booleans for speed and Ros infos
     
-    const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
-    bool pause_soft = false;
-    bool pause_hard = false;
-    bool pause_lidar = false;
-    bool print_soft = true;
-    bool print_hard = true;
-    bool print_lidar = true;
-    bool print_all = true;
+    double T_accel;
+    double T_decel;
+    double dist_accel;
+    double dist_decel;
     
     //path description values:  these are all with respect to odom coordinates
     // these values get set once upon construction of the current path segment:
