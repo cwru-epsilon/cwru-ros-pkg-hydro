@@ -641,9 +641,8 @@ double DesStateGenerator::compute_speed_profile() {
     }
     else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL) {
         ROS_WARN("%f / %f", current_seg_length_to_go_, current_seg_length_);
-        scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/2;
-        //if (scheduled_vel > MAX_SPEED);
-        //scheduled_vel = 0.0;
+        scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/2;  
+        //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
     }
     else { // not ready to decel, so target vel is v_max, either accel to it or hold it
         scheduled_vel = MAX_SPEED;
@@ -651,7 +650,8 @@ double DesStateGenerator::compute_speed_profile() {
     
     double new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false, dt_); 
     
-    if (fabs(odom_omega_) > 0.05) { //We detected some angular motion and hence we want to reduce linear velocity
+    //We detected some angular motion and hence we want to reduce linear velocity
+    if (fabs(odom_omega_) > 0.05) { 
         // What is done is basically if odom_omega was at its max. (0.8), 
         // then velocity will decrease reaching (0.4), making our maximum linear speed while rotating  
         double v_test = new_cmd_vel - odom_omega_/2;
@@ -659,6 +659,7 @@ double DesStateGenerator::compute_speed_profile() {
         ROS_WARN("IM HERE");
     }
     
+    //Here is the check for stops or lidar detection...
     if (pause_soft || pause_hard || pause_lidar) {
         print_all = false;
         if (pause_soft && print_soft) { 
