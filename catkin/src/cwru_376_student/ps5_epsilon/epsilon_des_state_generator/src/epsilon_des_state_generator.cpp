@@ -92,6 +92,9 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehan
 void DesStateGenerator::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
     odom_subscriber_ = nh_.subscribe("/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+    soft_estop_subscriber_ = nh_.subscribe("soft_estop", 1, &DesStateGenerator::softEstopCallback, this); // Subscribing to soft_estop, which is published by the user (manually on the terminal)
+    hard_estop_subscriber_ = nh_.subscribe("hardware_estop", 1, &DesStateGenerator::hardEstopCallback, this); // Subscribing to hardware_estop, which is published by estop_listener_epsilon.cpp
+    lidar_subscriber_= nh_.subscribe("lidar_dist", 1, &DesStateGenerator::laserMsgCallback, this); // Subscribing to lider_dist, which is published or advertised by lidar_alarm_epsilon.cpp
     // add more subscribers here, as needed
 }
 
@@ -133,6 +136,47 @@ void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     odom_phi_ = convertPlanarQuat2Phi(odom_quat_); // cheap conversion from quaternion to heading for planar motion
 }
 
+// This Callback is for handling hard estop triggers (Hardware estops are handled in estop_listener_epsilon.cpp ..
+void DesStateGenerator::hardEstopCallback(const std_msgs::Bool& estop_hard) {
+    if (estop_hard.data == true) {
+        if (print_hard) ROS_WARN("Hard Estop was triggered and ON (Robot is stopped)");
+        pause_hard = true;
+    }
+    else if (estop_hard.data == false && pause_hard == true) {
+        ROS_WARN("Hard Estop was triggered and OFF (Robot is in motion) :)");
+        pause_hard = false;
+    }
+}
+
+//----------------------How to Trigger a Soft E-Stop---------------------------------------
+    //rostopic pub [topic] [msg_type] [args]
+    // In Terminal...
+    //rostopic pub soft_estop std_msgs/Bool 'true' // To toggle the soft Estop from Terminal
+void DesStateGenerator::softEstopCallback (const std_msgs::Bool& estop_soft) {
+    if (estop_soft.data == true) {
+        if (print_soft) ROS_WARN("Soft Estop was triggered and ON");
+        pause_soft = true;
+    }
+    else if (estop_soft.data == false && pause_soft == true) {
+        ROS_WARN("Soft Estop was triggered and OFF :)");
+        pause_soft = false;
+        //if (rot_value) masterLoop(nh, 0.0, true, rem_dist_);
+        //else masterLoop(nh, rem_dist_, false, 0.0 );
+    }
+}
+
+// This Callback is for handling Lidar detections, handled in lidar_alarm_epsilon.cpp..
+void DesStateGenerator::laserMsgCallback(const std_msgs::Float32& dist) {
+    //ROS_INFO("Lidar: distance to obstacle is %f", dist.data);
+    if (dist.data<MIN_SAFE_DISTANCE) {
+        if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
+        pause_lidar = true;
+    }
+    else if (dist.data>=MIN_SAFE_DISTANCE && pause_lidar) {
+        pause_lidar = false; //if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
+	ROS_WARN("Obstacle is out of the way now... :)");
+    }   
+}
 //member function implementation for a service callback function
 bool DesStateGenerator::flushPathCallback(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
     ROS_INFO("service flush-Path callback activated");
@@ -521,7 +565,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     double delta_s = current_speed_des_*dt_; //incremental forward move distance; a scalar
     
     current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
-    ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f",current_seg_length_to_go_);     
+    if (print_all) ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f",current_seg_length_to_go_);     
     if (current_seg_length_to_go_ < LENGTH_TOL) { // check if done with this move
         // done with line segment;
         current_seg_type_ = HALT;
@@ -559,9 +603,9 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
     
     double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
-    ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
+    if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
     current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
-    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f",current_seg_length_to_go_);    
+    if (print_all) ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f",current_seg_length_to_go_);    
     
     if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
         current_seg_type_ = HALT;
@@ -658,7 +702,7 @@ double DesStateGenerator::compute_speed_profile() {
         // then velocity will decrease reaching (0.4), making our maximum linear speed while rotating  
         double v_test = new_cmd_vel - odom_omega_/2;
         new_cmd_vel = speedCompare(odom_vel_, v_test, false, dt_);
-        ROS_WARN("IM HERE");
+        //ROS_WARN("IM HERE");
     }
     
     //Here is the check for stops or lidar detection...

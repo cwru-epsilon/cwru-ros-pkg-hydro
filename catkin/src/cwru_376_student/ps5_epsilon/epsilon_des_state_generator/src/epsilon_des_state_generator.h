@@ -106,7 +106,11 @@ private:
     ros::ServiceServer append_path_; // service to receive a path message and append the poses to a queue of poses
     ros::ServiceServer flush_path_; //service to clear out the current queue of path points
     ros::Publisher des_state_publisher_; // we will publish desired states using this object   
-
+    
+    ros::Subscriber lidar_subscriber_;
+    ros::Subscriber soft_estop_subscriber_;
+    ros::Subscriber hard_estop_subscriber_;
+    
     double dt_; // time step of update rate
     std::queue<geometry_msgs::PoseStamped> path_queue_; //a C++ "queue" object, stores vertices as Pose points in a FIFO queue; receive these via appendPath service
     std::queue<cwru_msgs::PathSegment> segment_queue_; // path segment objects--as generated from crude polyline path (above)
@@ -167,6 +171,9 @@ private:
 
     //prototypes for subscription callbacks
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
+    void hardEstopCallback(const std_msgs::Bool& estop_hard);
+    void laserMsgCallback(const std_msgs::Float32& dist);
+    void softEstopCallback (const std_msgs::Bool& estop_soft);
     
     //prototypes for service callbacks 
     bool flushPathCallback(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response);

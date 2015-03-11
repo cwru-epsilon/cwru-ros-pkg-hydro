@@ -1,0 +1,11 @@
+<launch>
+	
+	
+	<node type="epsilon_des_state_generator" pkg="epsilon_des_state_generator" name="epsilon_des_state_generator" output="screen"/>
+	
+	<node type="epsilon_estop_listener_v2" pkg="epsilon_des_state_generator" name="epsilon_estop_listener_v2"/>
+	
+	<node type="epsilon_lidar_alarm_v3" pkg="epsilon_des_state_generator" name="epsilon_lidar_alarm_v3"/>
+	
+
+</launch>

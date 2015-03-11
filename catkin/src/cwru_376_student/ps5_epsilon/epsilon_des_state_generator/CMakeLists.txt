@@ -19,6 +19,8 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 # Executables
 cs_add_executable(epsilon_des_state_generator src/epsilon_des_state_generator.cpp)
+cs_add_executable(epsilon_estop_listener_v2 src/epsilon_estop_listener_v2.cpp)
+cs_add_executable(epsilon_lidar_alarm_v3 src/epsilon_lidar_alarm_v3.cpp)
 cs_add_executable(epsilon_path_sender src/epsilon_path_sender.cpp)
 # target_link_library(example my_lib)
 
