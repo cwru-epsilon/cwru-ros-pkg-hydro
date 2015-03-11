@@ -51,8 +51,12 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehan
     T_accel = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
     T_decel = MAX_SPEED / MAX_ACCEL; //(for same decel as accel); assumes brake to full halt
     dist_accel = 0.5 * MAX_ACCEL * (T_accel * T_accel); //distance rqd to ramp up to full speed
-    dist_decel = 0.5 * MAX_ACCEL * (T_decel * T_decel);; //same as ramp-up distance
+    dist_decel = 0.5 * MAX_ACCEL * (T_decel * T_decel); //same as ramp-up distance
     
+    R_T_accel = MAX_OMEGA / MAX_ALPHA;
+    R_T_decel = MAX_OMEGA / MAX_ALPHA;
+    R_dist_accel = 0.5 * MAX_ALPHA * (R_T_accel * R_T_accel);
+    R_dist_decel = 0.5 * MAX_ALPHA * (R_T_accel * R_T_accel);
     
     
     des_state_ = update_des_state_halt(); // construct a command state from current odom, + zero speed/spin
@@ -392,19 +396,21 @@ cwru_msgs::PathSegment DesStateGenerator::build_line_segment(Eigen::Vector2d v1,
 //  iterative re-use by "update_des_state"
 void DesStateGenerator::unpack_next_path_segment() {   
     cwru_msgs::PathSegment path_segment;
-    ROS_INFO("unpack_next_path_segment: ");
+    if (print_all) ROS_INFO("unpack_next_path_segment: ");
     if (segment_queue_.empty()) {
-        ROS_INFO("no more segments in the path-segment queue");
+        if (print_all) ROS_INFO("no more segments in the path-segment queue");
         process_new_vertex(); //build and enqueue more path segments, if possible
     }
     if (waiting_for_vertex_) {       
         //we need more path segments.  Do we have another path vertex available?
-        ROS_INFO("no more vertices in the path queue either...");
+        if (print_all) ROS_INFO("no more vertices in the path queue either...");
         current_seg_type_=HALT; // nothing more we can do until get more subgoals
+        print_all = false;
         return;
     }
      
-     ROS_INFO("processed a new path vertex; should have more path segments now");
+    ROS_INFO("processed a new path vertex; should have more path segments now");
+    print_all = true;
      
     //if here, then we should have a new path segment or two in the queue--perhaps newly generated
     //let's make sure:
@@ -594,7 +600,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     desired_state.twist.twist.linear.x = current_speed_des_; // but specified desired twist = 0.0
     desired_state.twist.twist.angular.z = current_omega_des_;
     desired_state.header.stamp = ros::Time::now();
-    ROS_WARN("HALT....");
+    if (print_all) ROS_WARN("HALT....");
     current_path_seg_done_ = true; // let the system know we are anxious for another segment to process...
     return desired_state;         
 }
@@ -630,12 +636,8 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate , double
 double DesStateGenerator::compute_speed_profile() {
     // HERE we should give a ramped-up linear velocity.
     // ALSO, we should put into consideration 
-    
-    // IF there was curvature, reduce speed (ramping-down for each function call)...
-    
+    // IF there was curvature, reduce speed (ramping-down for each function call)..
     //use segment_length_done to decide what vel should be, as per plan
-    
-    
     if (current_seg_length_to_go_<= 0.0) { // at goal, or overshot; stop!
         scheduled_vel=0.0;
     }
@@ -650,7 +652,7 @@ double DesStateGenerator::compute_speed_profile() {
     
     double new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false, dt_); 
     
-    //We detected some angular motion and hence we want to reduce linear velocity
+    //We detected some angular motion and hence we want to reduce linear velocity (While doing an ARC)
     if (fabs(odom_omega_) > 0.05) { 
         // What is done is basically if odom_omega was at its max. (0.8), 
         // then velocity will decrease reaching (0.4), making our maximum linear speed while rotating  
@@ -687,16 +689,26 @@ double DesStateGenerator::compute_speed_profile() {
 double DesStateGenerator::compute_omega_profile() {
     // We should measure Omega with respect to Curvature...
     // CHANGE rot_to_go or percentage concept with CURVATURE...
+    double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
+    ROS_WARN("current_seg_phi_des == %f", current_seg_phi_des_);
+    ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
+    ROS_WARN("I have to go == %f", current_phi_togo);
     
-    if (waiting_for_vertex_) { // at goal, or overshot; stop!
+    if (fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
         scheduled_omega=0.0;
     }
-    else if (!waiting_for_vertex_) { // not ready to decel, so target vel is v_max, either accel to it or hold it
+    else if (fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
+        ROS_WARN("desired / goal >> %f / %f", current_seg_phi_des_, current_seg_phi_goal_);
+        scheduled_omega = sqrt(2 * fabs(current_phi_togo) * MAX_ALPHA)/2;  
+        //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
+    }
+    else { // not ready to decel, so target omega is MAX_OMEGA, either accelerate to it or hold it
         scheduled_omega = MAX_OMEGA;
     }
     
     double new_cmd_omega = speedCompare(fabs(odom_omega_), scheduled_omega, true, dt_); 
     
+    //Here is the check for stops or lidar detection...
     if (pause_soft || pause_hard || pause_lidar) {
         print_all = false;
         if (pause_soft && print_soft) { 
@@ -713,7 +725,7 @@ double DesStateGenerator::compute_omega_profile() {
         }
         return 0.0; 
     }
-    //The function: compute_omega_profile() will be called everytime from other des_state function
+    //The function: compute_speed_profile() will be called everytime from other des_state function
     //and will be checked and updated for every function call...
     print_soft = true;
     print_hard = true;

@@ -62,6 +62,7 @@ const double HEADING_TOL = 0.001; // heading tolerance; It was ADJUSTED to our n
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
 const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
 
+const double RAMP_DOWN_OMEGA_DIST = 1.0; //Can be changed later if necessary  
 // define a class, including a constructor, member variables and member functions
 
 class DesStateGenerator {
@@ -124,7 +125,7 @@ private:
     double odom_phi_;
     geometry_msgs::Quaternion odom_quat_;
     
-
+    
     
     // Adding robot pause booleans for speed and Ros infos
     
@@ -132,6 +133,11 @@ private:
     double T_decel;
     double dist_accel;
     double dist_decel;
+    
+    double R_T_accel;
+    double R_T_decel;
+    double R_dist_accel;
+    double R_dist_decel; 
     
     //path description values:  these are all with respect to odom coordinates
     // these values get set once upon construction of the current path segment:
