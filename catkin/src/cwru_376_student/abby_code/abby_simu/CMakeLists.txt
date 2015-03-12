@@ -19,7 +19,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 # Executables
 #cs_add_executable(abby_simu src/abby_simu.cpp)
-cs_add_executable(abby_simu_v1 src/abby_simu_v1.cpp)
+#cs_add_executable(abby_simu_v1 src/abby_simu_v1.cpp)
 # target_link_library(example my_lib)
 
 cs_install()
