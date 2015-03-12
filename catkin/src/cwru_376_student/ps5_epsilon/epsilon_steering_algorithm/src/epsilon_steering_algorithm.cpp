@@ -8,7 +8,7 @@
 
 // this header incorporates all the necessary #include files and defines the class "SteeringController"
 #include "epsilon_steering_algorithm.h"
-
+bool steer = true;
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
 // want to put all dirty work of initializations here
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
@@ -152,7 +152,7 @@ bool SteeringController::serviceCallback(cwru_srv::simple_bool_service_messageRe
 }
 
 // HERE IS THE BIG DEAL: USE DESIRED AND ACTUAL STATE TO COMPUTE AND PUBLISH CMD_VEL
-void SteeringController::my_clever_steering_algorithm() {
+bool SteeringController::epsilon_steering_algorithm() {
     double controller_speed;
     double controller_omega;
     Eigen::Vector2d pos_err_xy_vec_;
@@ -170,7 +170,7 @@ void SteeringController::my_clever_steering_algorithm() {
 
     // have access to: des_state_vel_, des_state_omega_, des_state_x_, des_state_y_, des_state_phi_ and corresponding odom values    
     pos_err_xy_vec_ = des_xy_vec_ - odom_xy_vec_; // vector pointing from odom x-y to desired x-y
-    lateral_err = n_vec.dot(pos_err_xy_vec_); //signed scalar lateral offset error; if positive, then desired state is to the left of odom
+    lateral_err = n_vec.dot(pos_err_xy_vec_); // signed scalar lateral offset error; if positive, then desired state is to the left of odom
     trip_dist_err = t_vec.dot(pos_err_xy_vec_); // progress error: if positive, then we are behind schedule
     heading_err = min_dang(des_state_phi_ - odom_phi_); // if positive, should rotate +omega to align with desired heading
     
@@ -186,14 +186,28 @@ void SteeringController::my_clever_steering_algorithm() {
     steering_errs_.data.push_back(lateral_err);
     steering_errs_.data.push_back(heading_err); 
     steering_errs_.data.push_back(trip_dist_err);
-
+    ROS_WARN("lateral_err / heading_err / trip_dist_err ==> %f / %f / %f", lateral_err, heading_err, trip_dist_err);
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
     //END OF DEBUG STUFF
-    
-     // do something clever with this information     
+     // do something clever with this information    
     
     controller_speed = des_state_vel_; //you call that clever ?!?!?!? should speed up/slow down to null out 
     controller_omega = des_state_omega_; //ditto
+    
+    if (lateral_err != 0.0) { //if positive, then desired state is to the left of odom
+        //Modify "controller_omega" so that it fixes the lateral err and move along a better path here.
+        controller_omega = controller_omega + sgn(lateral_err)*0.01; 
+        //increment or decrement omega on every iteration until lateral_err becomes zero
+    }
+    //if (heading_err != 0.0) { //if positive, should rotate +omega to align with desired heading
+        //Modify "controller_omega" so that it fixes the heading  
+    //}
+    if (trip_dist_err != 0.0) { //if positive, then we are behind schedule
+        // accelerate when +ve or decelerate when -ve
+        controller_speed = controller_speed + sgn(trip_dist_err)*0.01;
+        //increment or decrement velocity on every iteration until trip_dist_err becomes zero
+    }
+
  
     controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
     
@@ -203,7 +217,14 @@ void SteeringController::my_clever_steering_algorithm() {
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header 
     cmd_publisher_.publish(twist_cmd_);  
-    cmd_publisher2_.publish(twist_cmd2_);     
+    cmd_publisher2_.publish(twist_cmd2_);
+    return true;
+}
+
+bool SteeringController::steer() { //Tell me when to steer
+    if (des_state_vel_ != 0 || des_state_omega_ != 0) return true;
+    else if (des_state_vel_ == 0 && des_state_omega_ == 0) return false;
+    else return true;
 }
 
 int main(int argc, char** argv) 
@@ -219,8 +240,8 @@ int main(int argc, char** argv)
    
     ROS_INFO:("starting steering algorithm");
     while (ros::ok()) {
-        steeringController.my_clever_steering_algorithm(); // compute and publish twist commands and cmd_vel and cmd_vel_stamped
-
+        if (steeringController.steer()) steeringController.epsilon_steering_algorithm(); // compute and publish twist commands and cmd_vel and cmd_vel_stamped
+        
         ros::spinOnce();
         sleep_timer.sleep();
     }
