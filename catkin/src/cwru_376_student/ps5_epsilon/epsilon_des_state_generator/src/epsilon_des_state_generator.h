@@ -52,7 +52,7 @@ const int SPIN_IN_PLACE = cwru_msgs::PathSegment::SPIN_IN_PLACE;
 
 // dynamic limitations
 const double MAX_SPEED = 0.8; // m/sec;
-const double MAX_OMEGA = 0.8; //1.0; // rad/sec;
+const double MAX_OMEGA = 1.0; //1.0; // rad/sec;
 const double MAX_ACCEL = 0.3; // m/sec^2;
 const double MAX_ALPHA = 0.3; // rad/sec^2;
 
