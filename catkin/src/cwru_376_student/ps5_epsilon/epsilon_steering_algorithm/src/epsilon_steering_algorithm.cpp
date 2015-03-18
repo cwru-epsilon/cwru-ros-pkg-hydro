@@ -28,6 +28,27 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
     }
     ROS_INFO("constructor: got an odom message");    
     
+    tfListener_ = new tf::TransformListener; 
+ 
+    bool tferr=true;
+    ROS_INFO("waiting for tf...");
+    while (tferr) {
+        tferr=false;
+        try {
+                //try to lookup transform from target frame "odom" to source frame "map"
+            //The direction of the transform returned will be from the target_frame to the source_frame. 
+             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+                tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+            } catch(tf::TransformException &exception) {
+                ROS_ERROR("%s", exception.what());
+                tferr=true;
+                ros::Duration(0.5).sleep(); // sleep for half a second
+                ros::spinOnce();                
+            }   
+    }
+    ROS_INFO("tf is good");
+    // from now on, tfListener will keep track of transforms from map frame to target frame
+    
     //initialize desired state, in case this is not yet being published adequately
     des_state_ = current_odom_;  // use the current odom state
     // but make sure the speed/spin commands are set to zero
@@ -189,12 +210,13 @@ bool SteeringController::epsilon_steering_algorithm() {
     ROS_WARN("lateral_err / heading_err / trip_dist_err ==> %f / %f / %f", lateral_err, heading_err, trip_dist_err);
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
     //END OF DEBUG STUFF
+    
      // do something clever with this information    
     
     controller_speed = des_state_vel_; //you call that clever ?!?!?!? should speed up/slow down to null out 
     controller_omega = des_state_omega_; //ditto
     
-    if (lateral_err != 0.0) { //if positive, then desired state is to the left of odom
+    if (lateral_err <= -0.001 || lateral_err >= 0.001) { //if positive, then desired state is to the left of odom
         //Modify "controller_omega" so that it fixes the lateral err and move along a better path here.
         controller_omega = controller_omega + sgn(lateral_err)*0.001; 
         //increment or decrement omega on every iteration until lateral_err becomes zero
@@ -202,7 +224,7 @@ bool SteeringController::epsilon_steering_algorithm() {
     //if (heading_err != 0.0) { //if positive, should rotate +omega to align with desired heading
         //Modify "controller_omega" so that it fixes the heading  
     //}
-    if (trip_dist_err != 0.0) { //if positive, then we are behind schedule
+    if (trip_dist_err <= -0.001 || trip_dist_err >= 0.001) { //if positive, then we are behind schedule
         // accelerate when +ve or decelerate when -ve
         controller_speed = controller_speed + sgn(trip_dist_err)*0.001;
         //increment or decrement velocity on every iteration until trip_dist_err becomes zero

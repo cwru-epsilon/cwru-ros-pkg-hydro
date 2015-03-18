@@ -473,7 +473,6 @@ void DesStateGenerator::unpack_next_path_segment() {
     current_seg_tangent_vec_(0) = cos(current_seg_init_tan_angle_);
     current_seg_tangent_vec_(1) = sin(current_seg_init_tan_angle_);  
     
-    ROS_WARN("CURVATURE:-->  %f", current_seg_curvature_);
     //initialize these values, which will evolve while traveling the segment
     current_seg_length_to_go_ = current_seg_length_;
     current_seg_phi_des_ = current_seg_init_tan_angle_;
