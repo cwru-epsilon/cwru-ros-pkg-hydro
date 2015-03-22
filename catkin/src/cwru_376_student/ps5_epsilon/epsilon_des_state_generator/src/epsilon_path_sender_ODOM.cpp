@@ -4,6 +4,7 @@
 // transmits a hard-coded path to desired-state generator node via service "appendPathService"
 // the message must contain a nav_msgs/Path object
 
+
 #include <stdlib.h>
 #include <string>
 #include <vector>
@@ -57,54 +58,51 @@ int main(int argc, char **argv) {
     double x,y,phi;
 
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
-    vertex.header.frame_id = "map";
+    vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
+    
     // fill in the interesting data: (x,y) and phi = location and heading
     //vertex 1:
-    //x=0;
-    //y=0;
-    //phi=0;
-    //ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    //vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    //path_message.request.path.poses.push_back(vertex);
-
-	//I started out from the elevator facing the lab door
-
-    //vertex 2: This is a point and heading just before the lab door and facing ThinkBox
-    x=5.1424;
-    y=12.016;
-    phi=0.931244073318;
+    x=0;
+    y=0;
+    phi=0;
     ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
     vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
-
-    //vertex 3: A point where Jinx is facing the Vending Machine Hallway...
-    x=-3.10906906497;
-    y=20.76938;
-    phi=0.397814322586;
+    //vertex 2:
+    x=5.0;
+    y=0.0;
+    phi=0.0;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+    //vertex 3: 
+    x=5.0;
+    y=5.0;
+    phi=1.57;
     ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
     vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
     //vertex 4:
-    //x=-3.0;
-    //y=5.0;
-    //phi=3.14;
-    //ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    //vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    //path_message.request.path.poses.push_back(vertex);
+    x=-3.0;
+    y=5.0;
+    phi=3.14;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
     //vertex 5:
-    //x=-3.0;
-    //y=0.0;
-    //phi= -1.57;
-    //ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    //vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    //path_message.request.path.poses.push_back(vertex);
+    x=-3.0;
+    y=0.0;
+    phi= -1.57;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
     //vertex 6:
-    //x=0.0;
-    //y=0.0;
-    //phi= 0;
-    //ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    //vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    //path_message.request.path.poses.push_back(vertex);
+    x=0.0;
+    y=0.0;
+    phi= 0;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
     //    x=1.0;
     //    y=2.0;
 //    phi=0.123;
