@@ -1,0 +1,27 @@
+cmake_minimum_required(VERSION 2.8.3)
+project(cwru_srv)
+
+find_package(catkin_simple REQUIRED)
+
+catkin_simple()
+
+# example boost usage
+# find_package(Boost REQUIRED COMPONENTS system thread)
+
+# C++0x support - not quite the same as final C++11!
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+
+# Libraries
+# cs_add_libraries(my_lib src/my_lib.cpp)   
+
+# Executables
+<<<<<<< HEAD:catkin/src/cwru_376_student/abb_pub_base/CMakeLists.txt
+#cs_add_executable(abb_pub_base src/abb_pub_base.cpp)
+=======
+# cs_add_executable(example src/example.cpp)
+>>>>>>> upstream/master:catkin/src/cwru_base_hydro/cwru_srv/CMakeLists.txt.old
+# target_link_library(example my_lib)
+
+cs_install()
+cs_export()
+    
