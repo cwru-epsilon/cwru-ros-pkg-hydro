@@ -22,13 +22,13 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 # cs_add_libraries(my_lib src/my_lib.cpp)   
 
 # Executables
-<<<<<<< HEAD:catkin/src/cwru_376_student/abby_code/abby_simu/CMakeLists.txt
+
 #cs_add_executable(abby_simu src/abby_simu.cpp)
 #cs_add_executable(abby_simu_v1 src/abby_simu_v1.cpp)
-=======
+
 # cs_add_executable(example src/example.cpp)
 cs_add_executable(process_pcl src/process_pcl.cpp)
->>>>>>> upstream/master:catkin/src/cwru_376_student/wsn_examples/example_pcl/CMakeLists.txt
+
 # target_link_library(example my_lib)
 target_link_libraries(process_pcl ${PCL_LIBRARIES})
 cs_install()

@@ -61,11 +61,6 @@ catkin_package(
   CATKIN_DEPENDS message_runtime
 )
 
-
-<<<<<<< HEAD
 cs_install()
 cs_export()
     
-
-=======
->>>>>>> upstream/master
