@@ -290,13 +290,15 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
     ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)",map_pose.pose.position.x,map_pose.pose.position.y);  
     
     //now, use the tf listener to find the transform from map coords to odom coords:
+	//tfListener_->waitForTransform("odom", "map", ros::Time(0), ros::Duration(1.0));
     tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
  
     tf_odom_goal = mapToOdom_*tf_map_goal; //here's one way to transform: operator "*" defined for class tf::Transform
 
     ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",tf_odom_goal.x(),tf_odom_goal.y());  
-
+	tfListener_->waitForTransform("odom", "map", ros::Time(0), ros::Duration(1.0));
     //let's transform the map_pose goal point into the odom frame:
+	map_pose.header.stamp = ros::Time::now();
     tfListener_->transformPose("odom", map_pose, odom_pose); 
     //tf::TransformListener tfl;
     //tfl.transformPoint("odom",c_map_pose,odom_pose);

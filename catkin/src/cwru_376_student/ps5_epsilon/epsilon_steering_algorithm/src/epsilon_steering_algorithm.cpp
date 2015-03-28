@@ -216,7 +216,7 @@ bool SteeringController::epsilon_steering_algorithm() {
     controller_speed = des_state_vel_; //you call that clever ?!?!?!? should speed up/slow down to null out 
     controller_omega = des_state_omega_; //ditto
     
-    if (lateral_err <= -0.001 || lateral_err >= 0.001) { //if positive, then desired state is to the left of odom
+    if (lateral_err <= -0.0001 || lateral_err >= 0.0001) { //if positive, then desired state is to the left of odom
         //Modify "controller_omega" so that it fixes the lateral err and move along a better path here.
         controller_omega = controller_omega + sgn(lateral_err)*0.001; 
         //increment or decrement omega on every iteration until lateral_err becomes zero
