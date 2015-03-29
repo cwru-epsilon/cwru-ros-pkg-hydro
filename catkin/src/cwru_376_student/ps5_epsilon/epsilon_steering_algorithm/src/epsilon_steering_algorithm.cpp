@@ -218,7 +218,7 @@ bool SteeringController::epsilon_steering_algorithm() {
     
     if (lateral_err <= -0.0001 || lateral_err >= 0.0001) { //if positive, then desired state is to the left of odom
         //Modify "controller_omega" so that it fixes the lateral err and move along a better path here.
-        controller_omega = controller_omega + sgn(lateral_err)*0.001; 
+        controller_omega = controller_omega + sgn(lateral_err)*0.1; 
         //increment or decrement omega on every iteration until lateral_err becomes zero
     }
     //if (heading_err != 0.0) { //if positive, should rotate +omega to align with desired heading
@@ -226,7 +226,7 @@ bool SteeringController::epsilon_steering_algorithm() {
     //}
     if (trip_dist_err <= -0.001 || trip_dist_err >= 0.001) { //if positive, then we are behind schedule
         // accelerate when +ve or decelerate when -ve
-        controller_speed = controller_speed + sgn(trip_dist_err)*0.001;
+        controller_speed = controller_speed + sgn(trip_dist_err)*0.1;
         //increment or decrement velocity on every iteration until trip_dist_err becomes zero
     }
 
@@ -263,7 +263,6 @@ int main(int argc, char** argv)
     ROS_INFO:("starting steering algorithm");
     while (ros::ok()) {
         if (steeringController.steer()) steeringController.epsilon_steering_algorithm(); // compute and publish twist commands and cmd_vel and cmd_vel_stamped
-        
         ros::spinOnce();
         sleep_timer.sleep();
     }

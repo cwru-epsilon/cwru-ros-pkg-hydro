@@ -17,6 +17,11 @@ int ans;
 double scheduled_vel = 0.0;
 double scheduled_omega = 0.0;
 
+//double odom_phi_old = 0.0;
+//bool spinCheck = true;
+//bool incOdomPhi = false;
+//double phiDiff;
+
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
@@ -298,7 +303,7 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
     ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",tf_odom_goal.x(),tf_odom_goal.y());  
 	tfListener_->waitForTransform("odom", "map", ros::Time(0), ros::Duration(1.0));
     //let's transform the map_pose goal point into the odom frame:
-	map_pose.header.stamp = ros::Time::now();
+    map_pose.header.stamp = ros::Time::now();
     tfListener_->transformPose("odom", map_pose, odom_pose); 
     //tf::TransformListener tfl;
     //tfl.transformPoint("odom",c_map_pose,odom_pose);
@@ -307,7 +312,7 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
      ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",odom_pose.pose.position.x,odom_pose.pose.position.y);
      ROS_INFO("odom_pose frame id: ");
      std::cout<<odom_pose.header.frame_id<<std::endl;
-         if (true) {
+         if (DEBUG_MODE) {
             std::cout<<"DEBUG:  enter 1: ";
             std::cin>>ans;   
         }    
@@ -619,8 +624,17 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     current_speed_des_ = compute_speed_profile(); //USE VEL PROFILING
     current_omega_des_ = 0.0; 
     current_seg_phi_des_ = current_seg_init_tan_angle_; // this value will not change during lineseg motion
+    Eigen::Vector2d p_current, p_des, diff;
     
-    double delta_s = current_speed_des_*dt_; //incremental forward move distance; a scalar
+    //unpack the x,y coordinates, and put these in a vector of type Eigen
+    p_current(0) = current_seg_ref_point_(0);
+    p_current(1) = current_seg_ref_point_(1);    
+    p_des(0) = current_seg_xy_des_(0);
+    p_des(1) = current_seg_xy_des_(1);   
+    diff = p_des - p_current;
+    double new_len = diff.norm();
+    double delta_s = 0;
+    if (new_len >= current_seg_length_to_go_) delta_s = current_speed_des_*dt_; //incremental forward move distance; a scalar
     
     current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
     if (print_all) ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f",current_seg_length_to_go_);     
@@ -659,8 +673,9 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     current_speed_des_ = 0.0; // also unchanging
     
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
+    double delta_phi = 0.0;
+    if (fabs(odom_phi_) >= fabs(current_seg_phi_des_)) delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     
-    double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
     current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
     if (print_all) ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f",current_seg_length_to_go_);    
@@ -791,17 +806,17 @@ double DesStateGenerator::compute_speed_profile() {
 double DesStateGenerator::compute_omega_profile() {
     // We should measure Omega with respect to Curvature...
     // CHANGE rot_to_go or percentage concept with CURVATURE...
-    double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
+    //double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
     ROS_WARN("current_seg_phi_des == %f", current_seg_phi_des_);
     ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
-    ROS_WARN("I have to go == %f", current_phi_togo);
+    ROS_WARN("I have to go == %f", current_seg_length_to_go_);//current_phi_togo);
     
-    if (fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
+    if (current_seg_length_to_go_ <= HEADING_TOL) {//fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
         scheduled_omega=0.0;
     }
-    else if (fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
+    else if (current_seg_length_to_go_ <= RAMP_DOWN_OMEGA_DIST) {//fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
         ROS_WARN("desired / goal >> %f / %f", current_seg_phi_des_, current_seg_phi_goal_);
-        scheduled_omega = sqrt(2 * fabs(current_phi_togo) * MAX_ALPHA)/2;  
+        scheduled_omega = sqrt(2 * current_seg_length_to_go_* MAX_ALPHA)/2;//fabs(current_phi_togo) * MAX_ALPHA)/2;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
     }
     else { // not ready to decel, so target omega is MAX_OMEGA, either accelerate to it or hold it
