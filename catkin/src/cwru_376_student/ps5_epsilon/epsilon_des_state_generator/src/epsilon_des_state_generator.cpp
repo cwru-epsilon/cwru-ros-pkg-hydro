@@ -675,6 +675,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
     double delta_phi = 0.0;
+    double old_seg_len_togo = current_seg_length_to_go_;
     if (fabs(odom_phi_) >= fabs(current_seg_phi_des_)) delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     
     if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
@@ -697,6 +698,8 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
         current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*(current_seg_length_ - current_seg_length_to_go_);       
     }
     
+    // This situation means when the robot is moving with NO current_seg_length_to_go_ CHANGE...
+    if (fabs (old_seg_len_togo) > fabs(current_seg_length_to_go_)) current_omega_des_ = 0.0; 
     // fill in components of desired-state message:
     desired_state.twist.twist.linear.x =current_speed_des_;
     desired_state.twist.twist.angular.z = current_omega_des_;
@@ -759,7 +762,7 @@ double DesStateGenerator::compute_speed_profile() {
     if (current_seg_length_to_go_<= 0.0) { // at goal, or overshot; stop!
         scheduled_vel=0.0;
     }
-    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL) {
+    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL + 1.0) { //It seems like dist_decel IS NOT ENOUGH...
         ROS_WARN("%f / %f", current_seg_length_to_go_, current_seg_length_);
         scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/4;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
