@@ -17,10 +17,10 @@ int ans;
 double scheduled_vel = 0.0;
 double scheduled_omega = 0.0;
 
-//double odom_phi_old = 0.0;
-//bool spinCheck = true;
-//bool incOdomPhi = false;
-//double phiDiff;
+double odom_phi_old = 0.0;
+bool spinCheck = true;
+bool incOdomPhi = false;
+double phiDiff;
 
 bool pause_soft = false;
 bool pause_hard = false;
@@ -676,7 +676,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
     double delta_phi = 0.0;
     double old_seg_len_togo = current_seg_length_to_go_;
-    if (fabs(odom_phi_) >= fabs(current_seg_phi_des_)) delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
+    if (fabs(odom_phi_) > fabs(current_seg_phi_des_)) delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     
     if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
     current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
@@ -762,7 +762,7 @@ double DesStateGenerator::compute_speed_profile() {
     if (current_seg_length_to_go_<= 0.0) { // at goal, or overshot; stop!
         scheduled_vel=0.0;
     }
-    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL + 1.0) { //It seems like dist_decel IS NOT ENOUGH...
+    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL + 0.5) { //It seems like dist_decel IS NOT ENOUGH...
         ROS_WARN("%f / %f", current_seg_length_to_go_, current_seg_length_);
         scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/4;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
@@ -810,22 +810,66 @@ double DesStateGenerator::compute_speed_profile() {
 double DesStateGenerator::compute_omega_profile() {
     // We should measure Omega with respect to Curvature...
     // CHANGE rot_to_go or percentage concept with CURVATURE...
+    double rot_to_go;
+    double rotation_done;
+    double percent_left;
+    double spinIncrement = sqrt((current_seg_init_tan_angle_+current_seg_length_to_go_)*(current_seg_init_tan_angle_+current_seg_length_to_go_)); //This is the value of the spin requested after the travel... 
+    //------------------------Odom Phi Checker and Fixer------------------------------
+    if (ROTATION_CHECK) {
+        if (!spinCheck) {
+            phiDiff = abs(odom_phi_ - odom_phi_old);
+            if (phiDiff >= 1) { //The moment when it begins a new circle...
+                incOdomPhi = true;
+                spinCheck = true; // Just to not go through this if statement again after this point...
+                spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
+            }
+        }
+        if (spinIncrement>6.28) {
+            odom_phi_old = odom_phi_; // To save the previous Odom Phi value (for making sure that it stays in the same travel phi...)
+            spinCheck = false;
+        }
+        else if (incOdomPhi) {
+            odom_phi_ = odom_phi_ + odom_phi_old;
+        }
+        ROS_INFO("Modified (checked) Odom_phi = %f", odom_phi_);
+    //-----------------------------------------------------------------------------------        
+        rotation_done = odom_phi_ - current_seg_init_tan_angle_;
+        ROS_INFO("Rotation Traveled: %f", rotation_done);
+        rot_to_go = current_seg_length_to_go_ - rotation_done;
+        percent_left = rot_to_go/current_seg_length_to_go_ * 100;
+        ROS_INFO("Rotation ToDo: %f, percent_left = %f", rot_to_go, percent_left);
+    }
+    
     //double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
     ROS_WARN("current_seg_phi_des == %f", current_seg_phi_des_);
     ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
     ROS_WARN("I have to go == %f", current_seg_length_to_go_);//current_phi_togo);
     ROS_WARN("ODOM PHI == %f", odom_phi_);
-    if (fabs(current_seg_length_to_go_) <= HEADING_TOL ) {//fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
+    //------------------------------------------------------------------------------------
+    //use segment_length_done to decide what OMEGA should be, as per plan
+    if (floor(rot_to_go*100)/100 == 0.0 || percent_left < 1.0) { // at goal, or overshot; stop!
         scheduled_omega=0.0;
     }
-    else if (fabs(current_seg_length_to_go_) <= RAMP_DOWN_OMEGA_DIST) {//fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
-        ROS_WARN("desired / goal >> %f / %f", current_seg_phi_des_, current_seg_phi_goal_);
-        scheduled_omega = sqrt(2 * current_seg_length_to_go_* MAX_ALPHA)/4;//fabs(current_phi_togo) * MAX_ALPHA)/2;  
-        //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
+    else if (percent_left >= 20 || percent_left <=80) { //possibly should be braking to a halt // floor(sqrt(rot_to_go*rot_to_go)*10)/10 <= floor(R_dist_decel/10)*10
+        scheduled_omega = sqrt(2 * sqrt(rot_to_go*rot_to_go) * MAX_ALPHA);
+        ROS_INFO("Rotation braking zone: omega_sched = %f",scheduled_omega);
     }
-    else { // not ready to decel, so target omega is MAX_OMEGA, either accelerate to it or hold it
+    else { // not ready to decel, so target vel is v_max, either accel to it or hold it
         scheduled_omega = MAX_OMEGA;
     }
+    //------------------------------------------------------------------------------------
+//    
+//    if (fabs(current_seg_length_to_go_) <= HEADING_TOL ) {//fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
+//        scheduled_omega=0.0;
+//    }
+//    else if (fabs(current_seg_length_to_go_) <= RAMP_DOWN_OMEGA_DIST) {//fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
+//        ROS_WARN("desired / goal >> %f / %f", current_seg_phi_des_, current_seg_phi_goal_);
+//        scheduled_omega = sqrt(2 * current_seg_length_to_go_* MAX_ALPHA)/4;//fabs(current_phi_togo) * MAX_ALPHA)/2;  
+//        //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
+//    }
+//    else { // not ready to decel, so target omega is MAX_OMEGA, either accelerate to it or hold it
+//        scheduled_omega = MAX_OMEGA;
+//    }
     
     double new_cmd_omega = speedCompare(fabs(odom_omega_), scheduled_omega, true, dt_); 
     

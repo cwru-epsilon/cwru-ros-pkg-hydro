@@ -64,6 +64,7 @@ const double MIN_SAFE_DISTANCE = 0.6; //in meters for Lidar
 
 const double RAMP_DOWN_OMEGA_DIST = 1.5; //Can be changed later if necessary  
 // define a class, including a constructor, member variables and member functions
+bool ROTATION_CHECK = true;
 
 class DesStateGenerator {
 public:
@@ -131,7 +132,6 @@ private:
     double odom_y_;
     double odom_phi_;
     geometry_msgs::Quaternion odom_quat_;
-    
     
     
     // Adding robot pause booleans for speed and Ros infos
