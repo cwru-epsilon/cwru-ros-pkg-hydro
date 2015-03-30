@@ -634,7 +634,8 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     diff = p_des - p_current;
     double new_len = diff.norm();
     double delta_s = 0;
-    if (new_len >= current_seg_length_to_go_) delta_s = current_speed_des_*dt_; //incremental forward move distance; a scalar
+    //if (new_len >= current_seg_length_to_go_)
+    delta_s = current_speed_des_*dt_; //incremental forward move distance; a scalar
     
     current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
     if (print_all) ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f",current_seg_length_to_go_);     
@@ -760,7 +761,7 @@ double DesStateGenerator::compute_speed_profile() {
     }
     else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL) {
         ROS_WARN("%f / %f", current_seg_length_to_go_, current_seg_length_);
-        scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/2;  
+        scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/4;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
     }
     else { // not ready to decel, so target vel is v_max, either accel to it or hold it
@@ -811,12 +812,12 @@ double DesStateGenerator::compute_omega_profile() {
     ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
     ROS_WARN("I have to go == %f", current_seg_length_to_go_);//current_phi_togo);
     
-    if (current_seg_length_to_go_ <= HEADING_TOL) {//fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
+    if (fabs(current_seg_length_to_go_) <= HEADING_TOL ) {//fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
         scheduled_omega=0.0;
     }
-    else if (current_seg_length_to_go_ <= RAMP_DOWN_OMEGA_DIST) {//fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
+    else if (fabs(current_seg_length_to_go_) <= RAMP_DOWN_OMEGA_DIST) {//fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
         ROS_WARN("desired / goal >> %f / %f", current_seg_phi_des_, current_seg_phi_goal_);
-        scheduled_omega = sqrt(2 * current_seg_length_to_go_* MAX_ALPHA)/2;//fabs(current_phi_togo) * MAX_ALPHA)/2;  
+        scheduled_omega = sqrt(2 * current_seg_length_to_go_* MAX_ALPHA)/4;//fabs(current_phi_togo) * MAX_ALPHA)/2;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
     }
     else { // not ready to decel, so target omega is MAX_OMEGA, either accelerate to it or hold it
