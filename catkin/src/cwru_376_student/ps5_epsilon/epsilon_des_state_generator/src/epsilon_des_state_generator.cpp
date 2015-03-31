@@ -691,7 +691,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
         spinCheck = false;
     }
     else if (incOdomPhi) {
-        current_seg_phi_des_ = current_seg_phi_des_ - odom_phi_old;
+        current_seg_phi_des_ = 0.0; // start from +/- 0.0 
         incOdomPhi = false;
         ROS_ERROR("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
     }
@@ -702,7 +702,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
     // decrement the (absolute) distance (rotation) to go
-    if (fabs(odom_phi_) >=  fabs(current_seg_phi_des_) ) current_seg_length_to_go_ -= fabs(delta_phi); 
+    if (fabs(odom_phi_)+delta_phi >=  fabs(current_seg_phi_des_) ) current_seg_length_to_go_ -= fabs(delta_phi); 
     if (print_all) ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f",current_seg_length_to_go_);    
     
     if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
