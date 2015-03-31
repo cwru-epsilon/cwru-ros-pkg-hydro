@@ -568,7 +568,7 @@ void DesStateGenerator::unpack_next_path_segment() {
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_= current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*current_seg_length_;
-            spinIncrement = current_seg_phi_goal_;
+            spinIncrement = fabs(current_seg_phi_goal_);
             break;
         case ARC:  // not implemented; set segment type to HALT
         default:  
@@ -674,24 +674,27 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     //    current_speed_des_, current_omega_des_
     current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
     current_speed_des_ = 0.0; // also unchanging
-
-//    // check if the goal phi is more that 2PI
-//    if (!spinCheck) {
-//        phiDiff = abs(current_seg_phi_des_ - odom_phi_old);
-//        if (phiDiff >= 1) { //The moment when it begins a new circle... the difference has to be bigger than a 2PI to be percise
-//            incOdomPhi = true;
-//            spinCheck = true; // Just to not go through this if statement again after this point...
-//            spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
-//        }
-//    }
-//    if (spinIncrement>6.288) { //More that 2PI
-//        odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
-//        spinCheck = false;
-//    }
-//    else if (incOdomPhi) {
-//        current_seg_phi_des_ = current_seg_phi_des_ + odom_phi_old;
-//    }
-//    ROS_INFO("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
+    
+    if (fabs(current_seg_phi_goal_) > M_PI) current_seg_phi_goal_ = current_seg_phi_goal_ - sgn(current_seg_phi_goal_)* M_PI; //fix your goal for once...
+    
+    // check if the des phi is more that 2PI
+    if (!spinCheck) {
+        phiDiff = abs(current_seg_phi_des_ - odom_phi_old);
+        if (phiDiff >= 1) { //The moment when it begins a new circle... the difference has to be bigger than a 2PI to be percise
+            incOdomPhi = true;
+            spinCheck = true; // Just to not go through this if statement again after this point...
+            spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
+        }
+    }
+    if (spinIncrement > M_PI) { //More that 2PI
+        odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
+        spinCheck = false;
+    }
+    else if (incOdomPhi) {
+        current_seg_phi_des_ = current_seg_phi_des_ - odom_phi_old;
+        incOdomPhi = false;
+    }
+    ROS_INFO("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
     //------------------------------------------------------------------------------------------------
         
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
@@ -830,14 +833,14 @@ double DesStateGenerator::compute_omega_profile() {
     double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
     ROS_WARN("current_seg_phi_des == %f", current_seg_phi_des_);
     ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
-    ROS_WARN("I have to go == %f", current_phi_togo);
+    ROS_WARN("I have to go == %f", current_seg_length_to_go_);
     
-    if (fabs(current_phi_togo) <= HEADING_TOL) { // at goal, or overshot; stop!
+    if (fabs(current_seg_length_to_go_) <= HEADING_TOL) { // at goal, or overshot; stop!
         scheduled_omega=0.0;
     }
-    else if (fabs(current_phi_togo) <= RAMP_DOWN_OMEGA_DIST) {
+    else if (fabs(current_seg_length_to_go_) <= RAMP_DOWN_OMEGA_DIST) {
         ROS_WARN("desired / goal >> %f / %f", current_seg_phi_des_, current_seg_phi_goal_);
-        scheduled_omega = sqrt(2 * fabs(current_phi_togo) * MAX_ALPHA)/2;  
+        scheduled_omega = sqrt(2 * fabs(current_seg_length_to_go_) * MAX_ALPHA)/2;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
     }
     else { // not ready to decel, so target omega is MAX_OMEGA, either accelerate to it or hold it
