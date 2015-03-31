@@ -679,7 +679,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     
     // check if the des phi is more that 2PI
     if (!spinCheck) {
-        phiDiff = abs(current_seg_phi_des_ - odom_phi_old);
+        phiDiff = fabs(current_seg_phi_des_ - odom_phi_old);
         if (phiDiff >= 1) { //The moment when it begins a new circle... the difference has to be bigger than a 2PI to be percise
             incOdomPhi = true;
             spinCheck = true; // Just to not go through this if statement again after this point...
