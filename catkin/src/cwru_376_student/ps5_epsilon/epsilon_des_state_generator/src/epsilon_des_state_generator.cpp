@@ -674,27 +674,27 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     //    current_speed_des_, current_omega_des_
     current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
     current_speed_des_ = 0.0; // also unchanging
-    
-    current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
-    // check if the goal phi is more that 2PI
-    if (!spinCheck) {
-        phiDiff = abs(current_seg_phi_des_ - odom_phi_old);
-        if (phiDiff >= 0.1) { //The moment when it begins a new circle...
-            incOdomPhi = true;
-            spinCheck = true; // Just to not go through this if statement again after this point...
-            spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
-        }
-    }
-    if (spinIncrement>6.28) { //More that 2PI
-        odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
-        spinCheck = false;
-    }
-    else if (incOdomPhi) {
-        current_seg_phi_des_ = current_seg_phi_des_ + odom_phi_old;
-    }
-    ROS_INFO("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
+
+//    // check if the goal phi is more that 2PI
+//    if (!spinCheck) {
+//        phiDiff = abs(current_seg_phi_des_ - odom_phi_old);
+//        if (phiDiff >= 1) { //The moment when it begins a new circle... the difference has to be bigger than a 2PI to be percise
+//            incOdomPhi = true;
+//            spinCheck = true; // Just to not go through this if statement again after this point...
+//            spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
+//        }
+//    }
+//    if (spinIncrement>6.288) { //More that 2PI
+//        odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
+//        spinCheck = false;
+//    }
+//    else if (incOdomPhi) {
+//        current_seg_phi_des_ = current_seg_phi_des_ + odom_phi_old;
+//    }
+//    ROS_INFO("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
     //------------------------------------------------------------------------------------------------
-    
+        
+    current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
     double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
     // decrement the (absolute) distance (rotation) to go

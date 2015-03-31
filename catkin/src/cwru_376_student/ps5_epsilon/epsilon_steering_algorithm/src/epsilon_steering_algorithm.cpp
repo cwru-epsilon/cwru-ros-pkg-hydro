@@ -188,6 +188,9 @@ bool SteeringController::epsilon_steering_algorithm() {
     double lateral_err;
     double trip_dist_err; // error is scheduling...are we ahead or behind?
     
+    if (fabs(des_state_phi_) > 6.288) {
+        des_state_phi_ = des_state_phi_ - sgn(des_state_phi_)*6.288;
+    }
 
     // have access to: des_state_vel_, des_state_omega_, des_state_x_, des_state_y_, des_state_phi_ and corresponding odom values    
     pos_err_xy_vec_ = des_xy_vec_ - odom_xy_vec_; // vector pointing from odom x-y to desired x-y
