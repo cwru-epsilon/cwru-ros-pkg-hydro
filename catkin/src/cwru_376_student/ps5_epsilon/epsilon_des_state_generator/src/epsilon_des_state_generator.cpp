@@ -21,6 +21,7 @@ double odom_phi_old = 0.0;
 bool spinCheck = true;
 bool incOdomPhi = false;
 double phiDiff;
+double spinIncrement;
 
 bool pause_soft = false;
 bool pause_hard = false;
@@ -567,6 +568,7 @@ void DesStateGenerator::unpack_next_path_segment() {
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_= current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*current_seg_length_;
+            spinIncrement = current_seg_phi_goal_;
             break;
         case ARC:  // not implemented; set segment type to HALT
         default:  
@@ -674,6 +676,24 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     current_speed_des_ = 0.0; // also unchanging
     
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
+    // check if the goal phi is more that 2PI
+    if (!spinCheck) {
+        phiDiff = abs(current_seg_phi_des_ - odom_phi_old);
+        if (phiDiff >= 0.1) { //The moment when it begins a new circle...
+            incOdomPhi = true;
+            spinCheck = true; // Just to not go through this if statement again after this point...
+            spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
+        }
+    }
+    if (spinIncrement>6.28) { //More that 2PI
+        odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
+        spinCheck = false;
+    }
+    else if (incOdomPhi) {
+        current_seg_phi_des_ = current_seg_phi_des_ + odom_phi_old;
+    }
+    ROS_INFO("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
+    //------------------------------------------------------------------------------------------------
     
     double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
     if (print_all) ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
@@ -759,7 +779,7 @@ double DesStateGenerator::compute_speed_profile() {
     if (current_seg_length_to_go_<= 0.0) { // at goal, or overshot; stop!
         scheduled_vel=0.0;
     }
-    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL + 0.5) { //It seems like dist_decel IS NOT ENOUGH...
+    else if (current_seg_length_to_go_ <= dist_decel+LENGTH_TOL + 0.25) { //It seems like dist_decel IS NOT ENOUGH...
         ROS_WARN("%f / %f", current_seg_length_to_go_, current_seg_length_);
         scheduled_vel = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL)/4;  
         //For some reason, applying the same deceleration equation and dividing it by (2) is working good for gazebo... 
