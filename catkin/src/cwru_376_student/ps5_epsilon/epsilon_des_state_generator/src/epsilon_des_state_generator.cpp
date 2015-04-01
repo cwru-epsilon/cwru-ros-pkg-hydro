@@ -745,7 +745,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate , double
     if (odom_speed < sched_speed) { // maybe we halted, e.g. due to estop or obstacle;
     // may need to ramp up to v_max; do so within accel limits
         double v_test = odom_speed + accel*dt_; // if callbacks are slow, this could be abrupt
-        if (rotate) v_test = odom_speed + accel*dt_*10; // It requires more omega for rotation just upon starting on JINX
+        if (rotate) v_test = odom_speed + accel*dt_*3; // It requires more omega for rotation just upon starting on JINX
         return (v_test < sched_speed) ? v_test : sched_speed; //choose lesser of two options
         
     // this prevents overshooting scheduled_vel
