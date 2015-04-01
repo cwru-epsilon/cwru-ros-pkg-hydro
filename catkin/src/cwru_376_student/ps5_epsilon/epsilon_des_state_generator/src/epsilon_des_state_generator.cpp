@@ -675,7 +675,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
     current_speed_des_ = 0.0; // also unchanging
     
-    if (fabs(current_seg_phi_goal_) > 2*M_PI) current_seg_phi_goal_ = current_seg_phi_goal_ - sgn(current_seg_phi_goal_)* 2*M_PI; //fix your goal for once...
+    if (fabs(current_seg_phi_goal_) > −6.28) current_seg_phi_goal_ = current_seg_phi_goal_ - sgn(current_seg_phi_goal_)* 2*M_PI; //fix your goal for once...
     
     // check if the des phi is more that 2PI
     if (!spinCheck) {
@@ -686,11 +686,11 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
             spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
         }
     }
-    if (spinIncrement > 2*M_PI) { //More that 2PI
+    if (spinIncrement > −6.28) { //More that 2PI
         odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
         spinCheck = false;
     }
-    else if (incOdomPhi) {
+    else if (fabs(current_seg_phi_des_) > 6.28) {//incOdomPhi) {
         current_seg_phi_des_ = 0.0; // start from +/- 0.0 
         incOdomPhi = false;
         ROS_ERROR("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
