@@ -679,7 +679,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
 
     if (fabs(current_seg_phi_des_) > 6.21 && spinIncrement > 6.28) {//incOdomPhi) {
         double diff = current_seg_phi_des_ - odom_phi_;
-        if (diff < 1) current_seg_phi_des_ = odom_phi_ + diff;
+        if (fabs(diff) < 1) current_seg_phi_des_ = odom_phi_ + diff;
         else current_seg_phi_des_ = odom_phi_; // start from +/- 0.0 
         incOdomPhi = false;
         ROS_ERROR("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
