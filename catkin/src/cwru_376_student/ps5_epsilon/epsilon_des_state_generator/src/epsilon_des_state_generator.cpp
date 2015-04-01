@@ -747,7 +747,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate , double
     if (odom_speed < sched_speed) { // maybe we halted, e.g. due to estop or obstacle;
     // may need to ramp up to v_max; do so within accel limits
         double v_test = odom_speed + accel*dt_; // if callbacks are slow, this could be abrupt
-        if (rotate && tarvelled < 0.5) v_test = odom_speed + accel*dt_ + 0.3; // It requires more omega for rotation just upon starting on JINX
+        if (rotate && fabs(tarvelled) < 0.1) v_test = odom_speed + accel*dt_ + 0.03; // It requires more omega for rotation just upon starting on JINX
         return (v_test < sched_speed) ? v_test : sched_speed; //choose lesser of two options
         
     // this prevents overshooting scheduled_vel
@@ -820,7 +820,7 @@ double DesStateGenerator::compute_speed_profile() {
 double DesStateGenerator::compute_omega_profile() {
     // We should measure Omega with respect to Curvature...
     // CHANGE rot_to_go or percentage concept with CURVATURE...
-    double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
+    //double current_phi_togo = current_seg_phi_des_ - current_seg_phi_goal_ ;
     ROS_WARN("current_seg_phi_des == %f", current_seg_phi_des_);
     ROS_WARN("current_seg_phi_goal == %f", current_seg_phi_goal_);
     ROS_WARN("I have to go == %f", current_seg_length_to_go_);
