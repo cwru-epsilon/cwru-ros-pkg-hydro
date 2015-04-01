@@ -674,28 +674,14 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     //    current_speed_des_, current_omega_des_
     current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
     current_speed_des_ = 0.0; // also unchanging
-    
+        // check if the des phi is more that 2PI --- and fix rotation
     if (fabs(current_seg_phi_goal_) > 6.28) current_seg_phi_goal_ = current_seg_phi_goal_ - sgn(current_seg_phi_goal_)* 2*M_PI; //fix your goal for once...
-    
-    // check if the des phi is more that 2PI
-//    if (!spinCheck) {
-//        phiDiff = fabs(odom_phi_ - odom_phi_old);
-//        if (phiDiff >= 1) { //The moment when it begins a new circle... the difference has to be bigger than a 2PI to be percise
-//            incOdomPhi = true;
-//            spinCheck = true; // Just to not go through this if statement again after this point...
-//            spinIncrement = 0.0; // Just to not do the following else if statement and proceed with the final else if
-//        }
-//    }
-//    if (spinIncrement > 6.28) { //More that 2PI
-//        odom_phi_old = current_seg_phi_des_; // To save the previous Des Phi value (for making sure that it stays in the same travel phi...)
-//        spinCheck = false;
-//    }
+
     if (fabs(current_seg_phi_des_) > 6.27 && spinIncrement > 6.28) {//incOdomPhi) {
         current_seg_phi_des_ = odom_phi_; // start from +/- 0.0 
         incOdomPhi = false;
         ROS_ERROR("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
     }
-    
     //------------------------------------------------------------------------------------------------
         
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
