@@ -678,7 +678,9 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     if (fabs(current_seg_phi_goal_) > 6.28) current_seg_phi_goal_ = current_seg_phi_goal_ - sgn(current_seg_phi_goal_)* 2*M_PI; //fix your goal for once...
 
     if (fabs(current_seg_phi_des_) > 6.21 && spinIncrement > 6.28) {//incOdomPhi) {
-        current_seg_phi_des_ = odom_phi_; // start from +/- 0.0 
+        double diff = current_seg_phi_des_ - odom_phi_;
+        if (diff < 1) current_seg_phi_des_ = odom_phi_ + diff;
+        else current_seg_phi_des_ = odom_phi_; // start from +/- 0.0 
         incOdomPhi = false;
         ROS_ERROR("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
     }
@@ -745,7 +747,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate , double
     if (odom_speed < sched_speed) { // maybe we halted, e.g. due to estop or obstacle;
     // may need to ramp up to v_max; do so within accel limits
         double v_test = odom_speed + accel*dt_; // if callbacks are slow, this could be abrupt
-        if (rotate && tarvelled < 0.5) v_test = odom_speed + accel*dt_*3; // It requires more omega for rotation just upon starting on JINX
+        if (rotate && tarvelled < 0.5) v_test = odom_speed + accel*dt_ + 0.3; // It requires more omega for rotation just upon starting on JINX
         return (v_test < sched_speed) ? v_test : sched_speed; //choose lesser of two options
         
     // this prevents overshooting scheduled_vel
