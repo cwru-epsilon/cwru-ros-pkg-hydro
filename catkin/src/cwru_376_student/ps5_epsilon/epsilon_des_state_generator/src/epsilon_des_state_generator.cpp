@@ -706,7 +706,8 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
         // consider specified curvature ==> rotation direction to goal
         current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*(current_seg_length_ - current_seg_length_to_go_);       
     }
-    
+    // To fix the waiting before rotation
+    if (fabs(current_omega_des_) < 0.5 )
     // fill in components of desired-state message:
     desired_state.twist.twist.linear.x =current_speed_des_;
     desired_state.twist.twist.angular.z = current_omega_des_;
@@ -734,8 +735,8 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 }
 
 double speedCompare (double odom_speed, double sched_speed, bool rotate , double dt_) {
-    odom_speed = sqrt(odom_speed * odom_speed); // To make it always +ve
-    sched_speed = sqrt(sched_speed * sched_speed); // To make it always +ve
+    odom_speed = fabs(odom_speed); // To make it always +ve
+    sched_speed = fabs(sched_speed); // To make it always +ve
     double accel = MAX_ACCEL;
     if (rotate) {
         accel = MAX_ALPHA;
@@ -744,7 +745,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate , double
     if (odom_speed < sched_speed) { // maybe we halted, e.g. due to estop or obstacle;
     // may need to ramp up to v_max; do so within accel limits
         double v_test = odom_speed + accel*dt_; // if callbacks are slow, this could be abrupt
-        
+        if (rotate) v_test = odom_speed + accel*dt_*10; // It requires more omega for rotation just upon starting on JINX
         return (v_test < sched_speed) ? v_test : sched_speed; //choose lesser of two options
         
     // this prevents overshooting scheduled_vel
