@@ -677,7 +677,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
         // check if the des phi is more that 2PI --- and fix rotation
     if (fabs(current_seg_phi_goal_) > 6.28) current_seg_phi_goal_ = current_seg_phi_goal_ - sgn(current_seg_phi_goal_)* 2*M_PI; //fix your goal for once...
 
-    if (fabs(current_seg_phi_des_) > 6.27 && spinIncrement > 6.28) {//incOdomPhi) {
+    if (fabs(current_seg_phi_des_) > 6.21 && spinIncrement > 6.28) {//incOdomPhi) {
         current_seg_phi_des_ = odom_phi_; // start from +/- 0.0 
         incOdomPhi = false;
         ROS_ERROR("Modified (checked) Curr_Des_phi = %f", current_seg_phi_des_);
