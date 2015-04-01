@@ -734,7 +734,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     return desired_state;         
 }
 
-double speedCompare (double odom_speed, double sched_speed, bool rotate , double dt_) {
+double speedCompare (double odom_speed, double sched_speed, bool rotate , double dt_, double tarvelled) {
     odom_speed = fabs(odom_speed); // To make it always +ve
     sched_speed = fabs(sched_speed); // To make it always +ve
     double accel = MAX_ACCEL;
@@ -745,7 +745,7 @@ double speedCompare (double odom_speed, double sched_speed, bool rotate , double
     if (odom_speed < sched_speed) { // maybe we halted, e.g. due to estop or obstacle;
     // may need to ramp up to v_max; do so within accel limits
         double v_test = odom_speed + accel*dt_; // if callbacks are slow, this could be abrupt
-        if (rotate) v_test = odom_speed + accel*dt_*3; // It requires more omega for rotation just upon starting on JINX
+        if (rotate && tarvelled < 0.5) v_test = odom_speed + accel*dt_*3; // It requires more omega for rotation just upon starting on JINX
         return (v_test < sched_speed) ? v_test : sched_speed; //choose lesser of two options
         
     // this prevents overshooting scheduled_vel
@@ -779,14 +779,14 @@ double DesStateGenerator::compute_speed_profile() {
         scheduled_vel = MAX_SPEED;
     }
     
-    double new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false, dt_); 
+    double new_cmd_vel = speedCompare(odom_vel_, scheduled_vel, false, dt_, 0.0); 
     
     //We detected some angular motion and hence we want to reduce linear velocity (While doing an ARC)
     if (fabs(odom_omega_) > 0.05) { 
         // What is done is basically if odom_omega was at its max. (0.8), 
         // then velocity will decrease reaching (0.4), making our maximum linear speed while rotating  
         double v_test = new_cmd_vel - odom_omega_/2;
-        new_cmd_vel = speedCompare(odom_vel_, v_test, false, dt_);
+        new_cmd_vel = speedCompare(odom_vel_, v_test, false, dt_, 0.0);
         //ROS_WARN("IM HERE");
     }
     
@@ -835,7 +835,7 @@ double DesStateGenerator::compute_omega_profile() {
         scheduled_omega = MAX_OMEGA;
     }
     
-    double new_cmd_omega = speedCompare(fabs(odom_omega_), scheduled_omega, true, dt_); 
+    double new_cmd_omega = speedCompare(fabs(odom_omega_), scheduled_omega, true, dt_, odom_phi_ - current_seg_init_tan_angle_); 
     
     //Here is the check for stops or lidar detection...
     if (pause_soft || pause_hard || pause_lidar) {
