@@ -28,9 +28,17 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 # cs_add_executable(example src/example.cpp)
 cs_add_executable(process_pcl src/process_pcl.cpp)
+<<<<<<< HEAD
 
+=======
+cs_add_executable(process_pcl_v2 src/process_pcl_v2.cpp)
+cs_add_executable(pcd_save src/pcd_save.cpp)
+cs_add_executable(process_pcd src/process_pcd.cpp)
+>>>>>>> upstream/master
 # target_link_library(example my_lib)
 target_link_libraries(process_pcl ${PCL_LIBRARIES})
+target_link_libraries(process_pcl_v2 ${PCL_LIBRARIES})
+#target_link_libraries(pcd_save ${PCL_LIBRARIES}) #don't need this?
 cs_install()
 cs_export()
     
