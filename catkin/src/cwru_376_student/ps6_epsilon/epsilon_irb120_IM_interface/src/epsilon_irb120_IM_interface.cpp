@@ -51,7 +51,7 @@ const sensor_msgs::JointStatePtr &js_msg) {
     for (int i=0;i<6;i++) {
         g_q_state[i] = js_msg->position[i];
     }
-    //cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
+    cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
     
 }
 
@@ -92,14 +92,15 @@ void stuff_trajectory( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_tr
     for (int ijnt=0;ijnt<6;ijnt++) {
         trajectory_point1.positions.push_back(g_q_state[ijnt]); // stuff in position commands for 6 joints
         //should also fill in trajectory_point.time_from_start
-        trajectory_point2.positions.push_back(0.0); // stuff in position commands for 6 joints        
+        trajectory_point2.positions.push_back(0.0); // stuff in position commands for 6 joints   
+        //trajectory_point2.positions[ijnt] = qvec[ijnt]; //put in final position command
     }
     trajectory_point1.time_from_start =    ros::Duration(0);  
     trajectory_point2.time_from_start =    ros::Duration(2.0);      
 
     // start from home pose... really, should should start from current pose!
     new_trajectory.points.push_back(trajectory_point1); // add this single trajectory point to the trajectory vector   
-    new_trajectory.points.push_back(trajectory_point2); // quick hack--return to home pose
+    //new_trajectory.points.push_back(trajectory_point2); // quick hack--return to home pose
     
     // fill in the target pose: really should fill in a sequence of poses leading to this goal
    trajectory_point2.time_from_start =    ros::Duration(4.0);  
@@ -108,6 +109,99 @@ void stuff_trajectory( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_tr
     }  
 
     new_trajectory.points.push_back(trajectory_point2); // append this point to trajectory
+}
+
+//command robot to move to "qvec" using a trajectory message, sent via ROS-I
+void stuff_trajectory_epsilon( std::vector<Vectorq6x1> all_qvec, trajectory_msgs::JointTrajectory &new_trajectory, int nsolns) {
+    
+    trajectory_msgs::JointTrajectoryPoint trajectory_point1;
+    trajectory_msgs::JointTrajectoryPoint trajectory_point2; 
+    Vectorq6x1 qvec; 
+    
+    new_trajectory.points.clear();
+    new_trajectory.joint_names.push_back("joint_1");
+    new_trajectory.joint_names.push_back("joint_2");
+    new_trajectory.joint_names.push_back("joint_3");
+    new_trajectory.joint_names.push_back("joint_4");
+    new_trajectory.joint_names.push_back("joint_5");
+    new_trajectory.joint_names.push_back("joint_6");   
+
+    new_trajectory.header.stamp = ros::Time::now();  
+    
+    trajectory_point1.positions.clear();    
+    trajectory_point2.positions.clear(); 
+    //fill in the points of the trajectory: initially, all home angles
+    for (int ijnt=0;ijnt<6;ijnt++) {
+        trajectory_point1.positions.push_back(g_q_state[ijnt]); // stuff in position commands for 6 joints
+        //should also fill in trajectory_point.time_from_start
+        trajectory_point2.positions.push_back(0.0); // stuff in position commands for 6 joints   
+        //trajectory_point2.positions[ijnt] = qvec[ijnt]; //put in final position command
+    }
+    trajectory_point1.time_from_start =    ros::Duration(0);  
+    trajectory_point2.time_from_start =    ros::Duration(2.0);      
+
+    // start from home pose... really, should should start from current pose!
+    new_trajectory.points.push_back(trajectory_point1); // add this single trajectory point to the trajectory vector   
+    //new_trajectory.points.push_back(trajectory_point2); // quick hack--return to home pose
+    
+    // fill in the target pose: really should fill in a sequence of poses leading to this goal
+   trajectory_point2.time_from_start =    ros::Duration(4.0); 
+   for (int i = 0; i < nsolns; i++) {
+       qvec = all_qvec[i];
+       ROS_WARN("nsoln = %d", i);
+         for (int ijnt=0;ijnt<6;ijnt++) {
+                trajectory_point2.positions[ijnt] = qvec[ijnt];
+                ROS_WARN("qvec[%d] = %f", ijnt, qvec[ijnt]);
+         } 
+   }
+
+    new_trajectory.points.push_back(trajectory_point2); // append this point to trajectory
+}
+
+
+
+int checkSolns(std::vector<Vectorq6x1> all_qvec, int nsolns) {
+    double all_diff[nsolns];
+    for (int i = 0; i < nsolns; i++) { 
+       double diff = 0;
+       Vectorq6x1 qvec = all_qvec[i];
+       for(int j = 0; j < 6; j++) {
+           diff = diff + g_q_state[j] - qvec[j];
+       }
+       all_diff[i] = diff;
+       ROS_WARN("all_diff[%d] = %f", i, all_diff[i]);
+    }
+    double temp_diff = fabs(all_diff[0]);
+    int temp_i = 0;
+    for (int i = 1; i < nsolns; i++) {
+        if (fabs(all_diff[i]) < temp_diff) {
+            temp_i = i;
+            temp_diff = fabs(all_diff[i]);
+        }
+    }
+    return temp_i;
+}
+
+int checkSolns_opt(std::vector<Vectorq6x1> all_qvec, int nsolns) {
+    double all_diff[nsolns];
+    for (int i = 0; i < nsolns; i++) { 
+       double diff = 0;
+       Vectorq6x1 qvec = all_qvec[i];
+       for(int j = 0; j < 4; j++) {
+           diff = diff + g_q_state[j] - qvec[j];
+       }
+       all_diff[i] = diff;
+       ROS_WARN("all_diff[%d] = %f", i, all_diff[i]);
+    }
+    double temp_diff = fabs(all_diff[0]);
+    int temp_i = 0;
+    for (int i = 1; i < nsolns; i++) {
+        if (fabs(all_diff[i]) < temp_diff) {
+            temp_i = i;
+            temp_diff = fabs(all_diff[i]);
+        }
+    }
+    return temp_i;
 }
 
 
@@ -176,10 +270,13 @@ int main(int argc, char** argv) {
 
                 if (nsolns>0) {      
                     ik_solver.get_solns(q6dof_solns);  
-                    
-                    qvec = q6dof_solns[0]; // arbitrarily choose first soln                    
-                    stuff_trajectory(qvec,new_trajectory);
- 
+                    //qvec = checkSolns(q6dof_solns, nsolns);
+                    int soln = checkSolns(q6dof_solns, nsolns);
+                    ROS_WARN("Chosen Solution = %d", soln);
+                    //ROS_WARN("qvec[%d] = %f", ijnt, qvec[ijnt]);
+                    qvec = q6dof_solns[soln]; // arbitrarily choose first soln                    
+                    // stuff_trajectory(qvec,new_trajectory); 
+                    stuff_trajectory_epsilon(q6dof_solns, new_trajectory, nsolns);
                         pub.publish(new_trajectory);
                 }
             }
