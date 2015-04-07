@@ -21,6 +21,8 @@
 //callback to subscribe to marker state
 Eigen::Vector3d g_p;
 Vectorq6x1 g_q_state;
+Vectorq6x1 home_state; //= {0.0245981, -1.43767, 0.0514272, -0.13549, -0.363732, -0.0716817};
+
 double g_x,g_y,g_z;
 //geometry_msgs::Quaternion g_quat; // global var for quaternion
 Eigen::Quaterniond g_quat;
@@ -117,6 +119,7 @@ void stuff_trajectory_epsilon( std::vector<Vectorq6x1> all_qvec, trajectory_msgs
     trajectory_msgs::JointTrajectoryPoint trajectory_point1;
     trajectory_msgs::JointTrajectoryPoint trajectory_point2; 
     Vectorq6x1 qvec; 
+    //Vectorq6x1 home_state;
     
     new_trajectory.points.clear();
     new_trajectory.joint_names.push_back("joint_1");
@@ -128,13 +131,33 @@ void stuff_trajectory_epsilon( std::vector<Vectorq6x1> all_qvec, trajectory_msgs
 
     new_trajectory.header.stamp = ros::Time::now();  
     
+    
+    
+//    home_state[0] = 0.0245981;
+//    home_state[1] = -1.43767;
+//    home_state[2] = 0.0514272;
+//    home_state[3] = -0.13549;
+//    home_state[4] = -0.363732;
+//    home_state[5] = -0.0716817;
+    
+    //home state for ABBY in gazebo
+    //home_state[0] = -.226703;
+    //home_state[1] = 0.45006;
+    //home_state[2] = -1.62978;
+    //home_state[3] = 0.259641;
+    //home_state[4] = 7.44516;
+    //home_state[5] = 0.819829;
+    //Home position for ABBY (not gazebo)
+    // 0.0245981   -1.43767  0.0514272   -0.13549  -0.363732 -0.0716817
+    
+    
     trajectory_point1.positions.clear();    
     trajectory_point2.positions.clear(); 
     //fill in the points of the trajectory: initially, all home angles
     for (int ijnt=0;ijnt<6;ijnt++) {
         trajectory_point1.positions.push_back(g_q_state[ijnt]); // stuff in position commands for 6 joints
         //should also fill in trajectory_point.time_from_start
-        trajectory_point2.positions.push_back(0.0); // stuff in position commands for 6 joints   
+        trajectory_point2.positions.push_back(home_state[ijnt]); // stuff in position commands for 6 joints   
         //trajectory_point2.positions[ijnt] = qvec[ijnt]; //put in final position command
     }
     trajectory_point1.time_from_start =    ros::Duration(0);  
@@ -142,7 +165,7 @@ void stuff_trajectory_epsilon( std::vector<Vectorq6x1> all_qvec, trajectory_msgs
 
     // start from home pose... really, should should start from current pose!
     new_trajectory.points.push_back(trajectory_point1); // add this single trajectory point to the trajectory vector   
-    //new_trajectory.points.push_back(trajectory_point2); // quick hack--return to home pose
+    new_trajectory.points.push_back(trajectory_point2); // quick hack--return to home pose
     
     // fill in the target pose: really should fill in a sequence of poses leading to this goal
    trajectory_point2.time_from_start =    ros::Duration(4.0); 
@@ -166,7 +189,7 @@ int checkSolns(std::vector<Vectorq6x1> all_qvec, int nsolns) {
        double diff = 0;
        Vectorq6x1 qvec = all_qvec[i];
        for(int j = 0; j < 6; j++) {
-           diff = diff + g_q_state[j] - qvec[j];
+           diff = diff + home_state[j] - qvec[j];
        }
        all_diff[i] = diff;
        ROS_WARN("all_diff[%d] = %f", i, all_diff[i]);
@@ -182,27 +205,6 @@ int checkSolns(std::vector<Vectorq6x1> all_qvec, int nsolns) {
     return temp_i;
 }
 
-int checkSolns_opt(std::vector<Vectorq6x1> all_qvec, int nsolns) {
-    double all_diff[nsolns];
-    for (int i = 0; i < nsolns; i++) { 
-       double diff = 0;
-       Vectorq6x1 qvec = all_qvec[i];
-       for(int j = 0; j < 4; j++) {
-           diff = diff + g_q_state[j] - qvec[j];
-       }
-       all_diff[i] = diff;
-       ROS_WARN("all_diff[%d] = %f", i, all_diff[i]);
-    }
-    double temp_diff = fabs(all_diff[0]);
-    int temp_i = 0;
-    for (int i = 1; i < nsolns; i++) {
-        if (fabs(all_diff[i]) < temp_diff) {
-            temp_i = i;
-            temp_diff = fabs(all_diff[i]);
-        }
-    }
-    return temp_i;
-}
 
 
 int main(int argc, char** argv) {
@@ -222,6 +224,13 @@ int main(int argc, char** argv) {
     Irb120_fwd_solver irb120_fwd_solver; //instantiate forward and IK solvers
     Irb120_IK_solver ik_solver;
     Eigen::Vector3d n_urdf_wrt_DH,t_urdf_wrt_DH,b_urdf_wrt_DH;
+    
+    home_state[0] = 0.0245981;
+    home_state[1] = -1.43767;
+    home_state[2] = 0.0514272;
+    home_state[3] = -0.13549;
+    home_state[4] = -0.363732;
+    home_state[5] = -0.0716817;
     // in home pose, R_urdf = I
     //DH-defined tool-flange axes point as:
     // z = 1,0,0
