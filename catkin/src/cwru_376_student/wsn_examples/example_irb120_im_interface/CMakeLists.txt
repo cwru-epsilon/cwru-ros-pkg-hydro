@@ -21,8 +21,9 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 # Executables
 # cs_add_executable(example src/example.cpp)
-cs_add_executable(example_irb120_im_interface src/example_irb120_im_interface.cpp)
-
+#cs_add_executable(example_irb120_im_interface src/example_irb120_im_interface.cpp)
+cs_add_executable(example_irb120_IM_interface src/example_irb120_IM_interface.cpp)
+cs_add_executable(example_irb120_IM_interface_v2 src/example_irb120_IM_interface_v2.cpp)
 # target_link_library(example my_lib)
 
 cs_install()
