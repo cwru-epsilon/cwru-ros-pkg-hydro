@@ -78,7 +78,7 @@ const sensor_msgs::JointStatePtr &js_msg) {
     for (int i=0;i<6;i++) {
         g_q_state[i] = js_msg->position[i];
     }
-    cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
+    //cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
     
 }
 
@@ -147,6 +147,7 @@ void stuff_trajectory_epsilon( std::vector<Vectorq6x1> all_qvec, trajectory_msgs
     //Vectorq6x1 home_state;
     
     new_trajectory.points.clear();
+    new_trajectory.joint_names.clear();
     new_trajectory.joint_names.push_back("joint_1");
     new_trajectory.joint_names.push_back("joint_2");
     new_trajectory.joint_names.push_back("joint_3");
@@ -247,13 +248,21 @@ int main(int argc, char** argv) {
     Irb120_fwd_solver irb120_fwd_solver; //instantiate forward and IK solvers
     Irb120_IK_solver ik_solver;
     Eigen::Vector3d n_urdf_wrt_DH,t_urdf_wrt_DH,b_urdf_wrt_DH;
-        
-    home_state[0] = 0.0245981;
-    home_state[1] = -1.43767;
-    home_state[2] = 0.0514272;
-    home_state[3] = -0.13549;
-    home_state[4] = -0.363732;
-    home_state[5] = -0.0716817;
+    //Home For Abby Sim    
+    //home_state[0] = 0.0245981;
+    //home_state[1] = -1.43767;
+    //home_state[2] = 0.0514272;
+    //home_state[3] = -0.13549;
+    //home_state[4] = -0.363732;
+    //home_state[5] = -0.0716817;
+
+    //Home POse for Physical Abby, the actual robot...
+    home_state[0] = 5.248869570095849e-07;
+    home_state[1] = -0.8018337488174438;
+    home_state[2] = -1.08710777759552;
+    home_state[3] = -5.774702458438696e-07;
+    home_state[4] = 0.31814315915107727;
+    home_state[5] = -1.5014468601748376e-07;
     // in home pose, R_urdf = I
     //DH-defined tool-flange axes point as:
     // z = 1,0,0
