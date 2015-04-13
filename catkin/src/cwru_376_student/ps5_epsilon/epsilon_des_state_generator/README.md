@@ -5,9 +5,9 @@ Purpose of this node is to output a (nearly) continuous stream of desired states
 This is done by receiving a ROS "Path" (vector of subgoal poses), and redescribing the polyline path as a queue of path "segments".
 At present, segments are either line segments or spin-in-place move segments.  Should be extended to incorporate curved segments.
 
-Velocity profiling is NOT implemented.  This needs to be done. %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Both angular and linear velocities are now ramping up/down smoothly with no errors or looping while spining in place. 
 
-Also, desState generation needs to be aware-of/respond-to any system halts (e.g., E-stop, obstacle, software halt...)
+Also, desState generation is aware of software and hardware E-stops, and obstacles using Lidar.
 
 The complementary node "epsilon_path_sender" shows how to communicate a (polyline) path to epsilon_des_state_generator.
 Desired states are output at frequency UPDATE_RATE as nav_msgs::Odometry messages on topic "desState".  
