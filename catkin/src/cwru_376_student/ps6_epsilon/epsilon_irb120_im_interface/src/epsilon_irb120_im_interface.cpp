@@ -130,15 +130,21 @@ void stuff_trajectory_epsilon( std::vector<Vectorq6x1> all_qvec, trajectory_msgs
     new_trajectory.joint_names.push_back("joint_6");   
 
     new_trajectory.header.stamp = ros::Time::now();  
+  
+    // home state for ABBY's arm extended left  
+   //    home_state[0] = -1.56675;
+// //    home_state[1] = -1.40744;
+// //    home_state[2] = -1.54781;
+// //    home_state[3] = 0.0153577;
+// //    home_state[4] = -0.206403;
+// //    home_state[5] = -1.59364;  
     
-    
-    
-//    home_state[0] = 0.0245981;
-//    home_state[1] = -1.43767;
-//    home_state[2] = 0.0514272;
-//    home_state[3] = -0.13549;
-//    home_state[4] = -0.363732;
-//    home_state[5] = -0.0716817;
+// //    home_state[0] = 0.0245981;
+// //    home_state[1] = -1.43767;
+// //    home_state[2] = 0.0514272;
+// //    home_state[3] = -0.13549;
+// //    home_state[4] = -0.363732;
+// //    home_state[5] = -0.0716817;
     
     //home state for ABBY in gazebo
     //home_state[0] = -.226703;
