@@ -423,7 +423,7 @@ void make_can_cloud(PointCloud<pcl::PointXYZ>::Ptr canCloud, double r_can, doubl
             i++;
         }
     //canCloud->header = inputCloud->header;
-    canCloud->header.frame_id = "world"; 
+    canCloud->header.frame_id = "base_link"; 
     //canCloud->header.stamp = ros::Time::now();
     canCloud->is_dense = true;
     canCloud->width = npts;
@@ -515,7 +515,7 @@ int main(int argc, char** argv) {
             << g_cloud_from_disk->width * g_cloud_from_disk->height
             << " data points from test_pcd.pcd  " << std::endl;
 
-    g_cloud_from_disk->header.frame_id = "world"; //looks like PCD does not encode the reference frame id
+    g_cloud_from_disk->header.frame_id = "base_link"; //looks like PCD does not encode the reference frame id
     double z_threshold=0.0;
     double E;
     double dEdCx=0.0;
@@ -599,9 +599,9 @@ int main(int argc, char** argv) {
 
             }
         }
-
+	g_cloud_from_disk->header.frame_id = "base_link";
         pubPcdCloud.publish(g_cloud_from_disk); //keep displaying the original scene
-
+	g_display_cloud->header.frame_id = "base_link";
         pubCloud.publish(g_display_cloud); //and also display whatever we choose to put in here
 
         ros::spinOnce();
