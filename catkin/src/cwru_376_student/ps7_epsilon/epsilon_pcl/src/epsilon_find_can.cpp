@@ -537,7 +537,7 @@ int main(int argc, char** argv) {
                 case FIND_PNTS_ABOVE_PLANE:
                     ROS_INFO("filtering for points above identified plane");
                     // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
-                    z_threshold = 0.0+Z_EPS; //g_plane_params[3] + Z_EPS;
+                    z_threshold = g_plane_params[3] + Z_EPS;//0.0+Z_EPS; //
                     ROS_INFO("filtering for points above %f ", z_threshold);
 
                     filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
