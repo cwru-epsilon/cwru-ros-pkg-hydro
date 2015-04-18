@@ -112,27 +112,27 @@ bool modeService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv:
 // this callback wakes up when a new "selected Points" message arrives
 void selectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
 /// TF HERE....########################################## FOR PATCH
-    pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
-    pcl::PointCloud<pcl::PointXYZRGB> cloud_trans;
+//    pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
+//    pcl::PointCloud<pcl::PointXYZRGB> cloud_trans;
     
     //STEP 1 Convert sensor_msgs to pcl
-    pcl::fromROSMsg(*cloud,cloud_in);
+//    pcl::fromROSMsg(*cloud,cloud_in);
     //STEP 2 Convert xb3 message to center_bumper frame (i think it is better this way)
-    try {
-        tfListener_->lookupTransform("base_link", cloud->header.frame_id, ros::Time(0), kToB_);
-    }
-    catch (tf::TransformException ex)  {
-        ROS_ERROR("%s",ex.what());
-    }
+//    try {
+//        tfListener_->lookupTransform("base_link", cloud->header.frame_id, ros::Time(0), kToB_);
+//    }
+//    catch (tf::TransformException ex)  {
+//        ROS_ERROR("%s",ex.what());
+//    }
     // Transform point cloud
-    pcl_ros::transformPointCloud (cloud_in,cloud_trans,kToB_);  
-    cloud_trans.header.frame_id="base_link";
+//    pcl_ros::transformPointCloud (cloud_in,cloud_trans,kToB_);  
+    //cloud_trans.header.frame_id="base_link";
     
     //For us to fetch cloud_trans into g_pclKinect, Here is a trick... :)
-    sensor_msgs::PointCloud2 temp;  
-    pcl::toROSMsg(cloud_trans, temp);//*g_pclKinect);
+//    sensor_msgs::PointCloud2 temp;  
+//    pcl::toROSMsg(cloud_trans, temp);//*g_pclKinect);
 
-    pcl::fromROSMsg(temp, *g_pclSelect);
+    pcl::fromROSMsg(*cloud, *g_pclSelect);
     ROS_INFO("RECEIVED NEW PATCH w/  %d * %d points", g_pclSelect->width, g_pclSelect->height);
     //ROS_INFO("frame id is: %s",cloud->header.frame_id);
     cout << "header frame: " << cloud->header.frame_id << endl;
@@ -578,7 +578,7 @@ int main(int argc, char** argv) {
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
                     // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
                     for (int i=0;i<3;i++) {
-                        g_cylinder_origin[i] = g_patch_centroid[i]; // DO BETTER THAN THIS
+                        g_cylinder_origin[i] = g_plane_origin[i];//g_patch_centroid[i]; // DO BETTER THAN THIS
                     }
                     
                     // fix the z-height, based on plane height:
