@@ -2,6 +2,10 @@
 // example code to acquire a pointcloud from a topic, and save a snapshot to disk
 // as a PCD file.
 
+// For Transformation of points to base_link, I followed the example in the below link.
+//http://lars.mec.ua.pt/lartk/doc/plane_model_road_segmentation/html/transform__cloud__nodelet_8cpp_source.html
+
+
 #include <stdlib.h>
 #include <math.h>
 #include <iostream>
@@ -22,14 +26,13 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
-#include <pcl_ros/transforms.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl-1.7/pcl/impl/point_types.hpp>
 //#include <pcl/common/impl/centroid.hpp>
 
 //PointCloud::Ptr pclCloud(new PointCloud); // Holds the whole pcl cloud
 //typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-
+#include <pcl_ros/transforms.h>
 #include <tf/transform_listener.h> //for transforms
 
 using namespace std;
@@ -46,33 +49,40 @@ const tf::TransformListener* tfListener_;
 tf::StampedTransform kToB_;    
 
 void kinectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pclKinect(new PointCloud<pcl::PointXYZ>);
-    //const sensor_msgs::PointCloud2ConstPtr temp = kinect_to_base_link(*cloud);
-    pcl::fromROSMsg(*cloud, *g_pclKinect);
-    //ROS_INFO("kinectCB %d * %d points", pclKinect->width, pclKinect->height);
-        got_cloud=true; //cue to "main" to save snapshot
-}
-
-//sensor_msgs::PointCloud2 kinect_to_base_link(const sensor_msgs::PointCloud2ConstPtr& cloud) {
-    // to use tf, need to convert coords from a geometry_msgs::Pose into a tf::Point
-
-  // sensor_msgs::PointCloud2 temp_pcl; 
     
-    //tfListener_->lookupTransform("base_link", "kinect_pc_frame", ros::Time(0), kToB_);
-    //let's transform the map_pose goal point into the odom frame:
-    //cloud->header.stamp = ros::Time::now();
-    //tfListener_->transformPointCloud ("base_link", cloud, temp_pcl);
-
-    //return temp_pcl; // 
-//}
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_trans;
+    
+    //STEP 1 Convert sensor_msgs to pcl
+    pcl::fromROSMsg(*cloud,cloud_in);
+    //STEP 2 Convert xb3 message to center_bumper frame (i think it is better this way)
+    try {
+        tfListener_->lookupTransform("base_link", cloud->header.frame_id, ros::Time(0), kToB_);
+    }
+    catch (tf::TransformException ex)  {
+        ROS_ERROR("%s",ex.what());
+    }
+    // Transform point cloud
+    pcl_ros::transformPointCloud (cloud_in,cloud_trans,kToB_);  
+    cloud_trans.header.frame_id="base_link";
+    
+    //For us to fetch cloud_trans into g_pclKinect, Here is a trick... :)
+    sensor_msgs::PointCloud2 temp;  
+    pcl::toROSMsg(cloud_trans, temp);//*g_pclKinect);
+    pcl::fromROSMsg(temp, *g_pclKinect);
+    //ROS_INFO("kinectCB %d * %d points", pclKinect->width, pclKinect->height);
+    got_cloud=true; //cue to "main" to save snapshot
+}
 
 int main(int argc, char** argv) {
     // Do some initialization here
     ros::init(argc, argv, "process_pcl");
     ros::NodeHandle nh;
     ros::Rate rate(2);
-
-    bool tferr=true;
+    
+    tf::TransformListener listener_;
+    tfListener_=&listener_;
+    //bool tferr=true;
     ROS_INFO("waiting for tf between kinect_pc_fram and base_link...");
 //    while (tferr) {
 //        tferr=false;
