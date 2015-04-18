@@ -109,6 +109,10 @@ bool modeService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv:
 // this callback wakes up when a new "selected Points" message arrives
 void selectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
 
+
+/// TF HERE....########################################## FOR PATCH
+
+
     pcl::fromROSMsg(*cloud, *g_pclSelect);
     ROS_INFO("RECEIVED NEW PATCH w/  %d * %d points", g_pclSelect->width, g_pclSelect->height);
     //ROS_INFO("frame id is: %s",cloud->header.frame_id);
