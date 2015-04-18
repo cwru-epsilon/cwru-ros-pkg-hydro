@@ -96,6 +96,9 @@ Eigen::Affine3f g_A_plane;
 double g_z_plane_nom;
 std::vector<int> g_indices_of_plane; //indices of patch that do not contain outliers 
 
+const tf::TransformListener* tfListener_;
+tf::StampedTransform kToB_;    
+
 //use this service to set processing modes interactively
 bool modeService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
     ROS_INFO("mode select service callback activated");
@@ -108,12 +111,28 @@ bool modeService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv:
 
 // this callback wakes up when a new "selected Points" message arrives
 void selectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
-
-
 /// TF HERE....########################################## FOR PATCH
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_trans;
+    
+    //STEP 1 Convert sensor_msgs to pcl
+    pcl::fromROSMsg(*cloud,cloud_in);
+    //STEP 2 Convert xb3 message to center_bumper frame (i think it is better this way)
+    try {
+        tfListener_->lookupTransform("base_link", cloud->header.frame_id, ros::Time(0), kToB_);
+    }
+    catch (tf::TransformException ex)  {
+        ROS_ERROR("%s",ex.what());
+    }
+    // Transform point cloud
+    pcl_ros::transformPointCloud (cloud_in,cloud_trans,kToB_);  
+    cloud_trans.header.frame_id="base_link";
+    
+    //For us to fetch cloud_trans into g_pclKinect, Here is a trick... :)
+    sensor_msgs::PointCloud2 temp;  
+    pcl::toROSMsg(cloud_trans, temp);//*g_pclKinect);
 
-
-    pcl::fromROSMsg(*cloud, *g_pclSelect);
+    pcl::fromROSMsg(temp, *g_pclSelect);
     ROS_INFO("RECEIVED NEW PATCH w/  %d * %d points", g_pclSelect->width, g_pclSelect->height);
     //ROS_INFO("frame id is: %s",cloud->header.frame_id);
     cout << "header frame: " << cloud->header.frame_id << endl;
@@ -508,7 +527,12 @@ int main(int argc, char** argv) {
     ros::ServiceServer service = nh.advertiseService("process_mode", modeService);
 
     std::vector<int> indices_pts_above_plane;
-
+    
+    ROS_INFO("waiting for tf between kinect_pc_fram and base_link...");
+    tf::TransformListener listener_;
+    tfListener_=&listener_;
+    ROS_INFO("tf is good");
+    
     //load a pointcloud from file: 
     if (pcl::io::loadPCDFile<pcl::PointXYZ> ("test_pcd.pcd", *g_cloud_from_disk) == -1) //* load the file
     {

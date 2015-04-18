@@ -80,29 +80,12 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     ros::Rate rate(2);
     
+    ROS_INFO("waiting for tf between kinect_pc_fram and base_link...");
     tf::TransformListener listener_;
     tfListener_=&listener_;
-    //bool tferr=true;
-    ROS_INFO("waiting for tf between kinect_pc_fram and base_link...");
-//    while (tferr) {
-//        tferr=false;
-//        try {
-                //try to lookup transform from target frame "base_link" to source frame "kinect_pc_fram"
-            //The direction of the transform returned will be from the target_frame to the source_frame. 
-             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
-//                tfListener_->lookupTransform("base_link", "kinect_pc_frame", ros::Time(0), kToB_);
-//            } catch(tf::TransformException &exception) {
-//                ROS_ERROR("%s", exception.what());
-//                tferr=true;
-//                ros::Duration(0.5).sleep(); // sleep for half a second
-//                ros::spinOnce();                
-//            }   
-//    }
-//    ROS_INFO("tf is good");
+    ROS_INFO("tf is good");
     // Subscribers
     ros::Subscriber getPCLPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/kinect/depth/points", 1, kinectCB);
-
-    
     
     while (ros::ok()) {       
         if (got_cloud) {
