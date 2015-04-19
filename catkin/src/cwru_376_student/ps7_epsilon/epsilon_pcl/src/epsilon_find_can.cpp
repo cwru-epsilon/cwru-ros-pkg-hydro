@@ -81,6 +81,7 @@ const double R_EPS = 0.05; // choose a tolerance for cylinder-fit outliers
 
 const double R_CYLINDER = 0.085; //estimated from ruler tool...example to fit a cyclinder of this radius to data
 const double H_CYLINDER = 0.3; // estimated height of cylinder
+const double AVG_POINT_DIST =  0.005715;
 Eigen::Vector3f g_cylinder_origin; // origin of model for cylinder registration
 
 int g_pcl_process_mode = 0; // mode--set by service
@@ -412,12 +413,46 @@ void filter_cloud_above_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud, double z_th
         pt = inputCloud->points[i].getVector3fMap();
         //cout<<"pt: "<<pt.transpose()<<endl;
         //dz = pt[2] - z_threshold;
-        if (pt[2] > z_threshold) {
+        if (pt[2] < z_threshold) {
             indices.push_back(i);
             //cout<<"dz = "<<dz<<"; saving this point...enter 1 to continue: ";
             //cin>>ans;
         }
     }
+    int n_extracted = indices.size();
+    cout << " number of points extracted = " << n_extracted << endl;
+}
+
+void filter_cloud_above_table(PointCloud<pcl::PointXYZ>::Ptr inputCloud, double z_threshold, vector<int> &indices) {
+    int npts = inputCloud->points.size();
+    Eigen::Vector3f pt, pt_adv;
+    std::vector<int> indices_old; // to compare with AVG_POINT_DIST
+    indices_old.clear();
+    indices.clear(); //
+    //double dz;
+    int ans;
+    double dist;
+    for (int i = 0; i < npts; ++i) {
+        pt = inputCloud->points[i].getVector3fMap();
+	if (i < npts-1) pt_adv = inputCloud->points[i+1].getVector3fMap();
+	double dx = pt[0] - pt_adv[0];
+        double dy = pt[1] - pt_adv[1];
+        dist = sqrt(dx*dx+dy*dy);
+	if (fabs(dist) > AVG_POINT_DIST && i < npts-1) {
+	    indices_old = indices;
+	    indices.clear();
+	} 
+        if (pt[2] < z_threshold) {
+            indices.push_back(i);
+            //cout<<"dz = "<<dz<<"; saving this point...enter 1 to continue: ";
+            //cin>>ans;
+        }
+    }
+    if (indices.size() < indices_old.size()) {
+	indices = indices_old;
+    }
+    dist /= npts;
+    ROS_WARN("%f , avg distance between xy1 and xy2 ", fabs(dist));
     int n_extracted = indices.size();
     cout << " number of points extracted = " << n_extracted << endl;
 }
@@ -565,7 +600,7 @@ int main(int argc, char** argv) {
                 case FIND_PNTS_ABOVE_PLANE:
                     ROS_INFO("filtering for points above identified plane");
                     // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
-                    z_threshold = g_plane_params[3] + Z_EPS;//0.0+Z_EPS; //
+                    z_threshold = 0.0-Z_EPS; //g_plane_params[3] + Z_EPS;//
                     ROS_INFO("filtering for points above %f ", z_threshold);
 
                     filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
@@ -578,15 +613,17 @@ int main(int argc, char** argv) {
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
                     // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
                     for (int i=0;i<3;i++) {
-                        g_cylinder_origin[i] = g_plane_origin[i];//g_patch_centroid[i]; // DO BETTER THAN THIS
+                        g_cylinder_origin[i] = g_patch_centroid[i]; // DO BETTER THAN THIS
                     }
                     
                     // fix the z-height, based on plane height:
                     g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
+		    g_cylinder_origin[2] = g_cylinder_origin[2] + H_CYLINDER + Z_EPS;
                     //g_cylinder_origin is now the initial guess for the origin of the cylinder, expressed in sensor coords
 
                     // now, cast this into the rotated coordinate frame:
-                    can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin; 
+                    can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin;
+		
 
                     cout<<"initial guess for cylinder fit: "<<endl;
                     cout<<" attempting fit at c = "<<can_center_wrt_plane.transpose()<<endl;                
@@ -603,8 +640,8 @@ int main(int argc, char** argv) {
                         cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
                        // try to do something smart.  can try using dEdCy and dEdCx
                         
-                        can_center_wrt_plane[0]+= 0.0;  //THIS IS DUMB; DO SOMETHING SMART TO IMPROVE CENTER ESTIMATE
-                        can_center_wrt_plane[1]+= 0.0; 
+                        can_center_wrt_plane[0]+= 0.0 - dEdCx*5;  
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
                     
                     ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
                     compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
@@ -616,11 +653,65 @@ int main(int argc, char** argv) {
                   
                     break;
                     
-
-
                 case FIND_ON_TABLE:
                     ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
                     //really, this is steps 0,1,2 and 3, above
+		    ROS_INFO("MODE 0: identifying plane based on patch selection...");
+                    find_plane(g_plane_params, g_indices_of_plane); // results in g_display_cloud (in orig frame), as well as 
+                    //g_cloud_transformed (rotated version of original cloud); g_indices_of_plane indicate points on the plane
+			ros::Duration(2.0).sleep();
+		    ROS_INFO("filtering for points above identified plane");
+                    // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
+                    z_threshold = 0.0-Z_EPS; //g_plane_params[3] + Z_EPS;//
+                    ROS_INFO("filtering for points above %f ", z_threshold);
+                    filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
+                    //extract these points--but in original, non-rotated frame; useful for display
+                    copy_cloud(g_cloud_from_disk, indices_pts_above_plane, g_display_cloud);
+			ros::Duration(2.0).sleep();
+	 	    ROS_INFO("creating a can cloud");
+                    make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
+                    // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
+                    for (int i=0;i<3;i++) {
+                        g_cylinder_origin[i] = g_patch_centroid[i]; // DO BETTER THAN THIS
+                    }
+                    // fix the z-height, based on plane height:
+                    g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
+		    g_cylinder_origin[2] = g_cylinder_origin[2] + H_CYLINDER + Z_EPS;
+                    //g_cylinder_origin is now the initial guess for the origin of the cylinder, expressed in sensor coords
+                    // now, cast this into the rotated coordinate frame:
+                    can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin;
+                    cout<<"initial guess for cylinder fit: "<<endl;
+                    cout<<" attempting fit at c = "<<can_center_wrt_plane.transpose()<<endl;                
+                    compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+                    cout<<"R_xform: "<<g_R_transform<<endl;
+                    A_plane_to_sensor.linear() = g_R_transform;
+                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(2.0).sleep();
+                    cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
+                       // try to do something smart.  can try using dEdCy and dEdCx
+                    if (dEdCx != dEdCx || dEdCy != dEdCy) { //A simple check if the values were equal to (nan)
+			ROS_WARN("The patch selection was not close enough for the can model to fit in the actual can.");
+			break;
+		    }
+		    else { // tolarances were figured out from by trials and error...
+			while((fabs(dEdCx) > 0.015 || fabs(dEdCy) > 7e-5 || fabs(E) > 2e-5) && ros::ok()) { 
+			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
+
+                    	ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
+                    	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+
+                    g_cylinder_origin= g_A_plane*can_center_wrt_plane; 
+                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(0.5).sleep();
+			}
+		    }
+		    // Now we have the fixed g_cylinder_origin. it points to the top of that object so send this in a specific topic. Like interactive marker.....
+			cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
                     break;
                 default:
                     ROS_WARN("this mode is not implemented");
