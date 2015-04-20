@@ -7,7 +7,7 @@ ros::NodeHandle nh; // two lines to create a publisher object that can talk to R
 //stdr "robot0" is expecting to receive commands on topic: /robot0/cmd_vel
 // commands are of type geometry_msgs/Twist, but they use only velocity in x dir and
 //  yaw rate in z-dir; other 4 fields will be ignored
-ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("/robot0/cmd_vel",1);
+ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1);
 // change topic to command abby...
 //ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("abby/cmd_vel",1);
 ros::Rate sleep_timer(100); //let's make a 100Hz timer

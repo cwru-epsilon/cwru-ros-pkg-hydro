@@ -68,7 +68,7 @@ double dt_callback_=0.0;
 void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi) { 
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
+    ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
     ros::Rate rtimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
      // desired travel distance in meters; anticipate travelling multiple segments
     
