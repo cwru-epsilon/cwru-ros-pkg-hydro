@@ -65,7 +65,7 @@ double dt_callback_=0.0;
 
 // The masterLoop method handles the node from main() and takes either a length forward or phi to rotate to. a boolean was defined to distinguish between the two... 
 
-void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi) { 
+void masterLoop(ros::NodeHandle& nh, double seg_len) { 
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
     ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -81,9 +81,6 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
     double new_cmd_vel = 0.1; // value of speed to be commanded; update each iteration
     
     double start_phi = 0.0; // Compare with odom_phi
-    double rotation_done = 0.0; // need to compute actual rotation done in Radian
-    double new_cmd_omega = 0.0; // update spin rate command as well
-    double scheduled_omega = 0.0; //desired vel, assuming all is per plan
 
     geometry_msgs::Twist cmd_vel; //create a variable of type "Twist" to publish speed/spin commands
 
@@ -113,21 +110,18 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
     double T_decel = v_max / a_max; //(for same decel as accel); assumes brake to full halt
     double dist_accel = 0.5 * a_max * (T_accel * T_accel); //distance rqd to ramp up to full speed
     double dist_decel = 0.5 * a_max * (T_decel * T_decel);; //same as ramp-up distance
-    double R_accel = omega_max / alpha_max;
-    double R_decel = omega_max / alpha_max;
-    //double R_dist_accel = 0.5 * alpha_max * (R_accel * R_accel);
-    //double R_dist_decel = 0.5 * alpha_max * (R_decel * R_decel);
-    
+    double direction = (seg_len > 0) ? 1 : -1;
+    seg_len = fabs(seg_len); // take away the sign now...
     // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
-    while (ros::ok() && rotate == false) 
+    while (ros::ok()) 
     {   
         ros::spinOnce(); // allow callbacks to populate fresh data
         // compute distance travelled so far:
         double delta_x = odom_x_ - start_x;
         double delta_y = odom_y_ - start_y;
-        segment_length_done = sqrt(delta_x * delta_x + delta_y * delta_y);
+        segment_length_done = sqrt(delta_x * delta_x + delta_y * delta_y); //Always +VE
         ROS_INFO("dist travelled: %f", segment_length_done);
-        double dist_to_go = seg_len - segment_length_done;
+        double dist_to_go = seg_len - segment_length_done; //always +VE
         
         //----------------------------------------------------------------------------------
         
@@ -138,30 +132,30 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
         else if (dist_to_go <= dist_decel) { //possibly should be braking to a halt
             // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
             // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-            scheduled_vel = sqrt(2 * dist_to_go * a_max);
+            scheduled_vel = sqrt(2 * dist_to_go * a_max) * direction;
             ROS_INFO("braking zone: v_sched = %f",scheduled_vel);
         }
         else { // not ready to decel, so target vel is v_max, either accel to it or hold it
-            scheduled_vel = v_max;
+            scheduled_vel = v_max * direction;
         }
         
         //------------------------------------------------------------------------------------
         
         //how does the current velocity compare to the scheduled vel?
-        if (odom_vel_ < scheduled_vel) {  // maybe we halted, e.g. due to estop or obstacle;
+        if (fabs(odom_vel_) < fabs(scheduled_vel)) {  // maybe we halted, e.g. due to estop or obstacle;
             // may need to ramp up to v_max; do so within accel limits
-            double v_test = odom_vel_ + a_max*dt_callback_; // if callbacks are slow, this could be abrupt
+            double v_test = odom_vel_ + a_max*dt_callback_*direction; // if callbacks are slow, this could be abrupt
             // operator:  c = (a>b) ? a : b;
-            new_cmd_vel = (v_test < scheduled_vel) ? v_test : scheduled_vel; //choose lesser of two options
+            new_cmd_vel = (fabs(v_test) < fabs(scheduled_vel)) ? v_test : scheduled_vel; //choose lesser of two options
             // this prevents overshooting scheduled_vel
-        } else if (odom_vel_ > scheduled_vel) { //travelling too fast--this could be trouble
+        } else if (fabs(odom_vel_) > fabs(scheduled_vel)) { //travelling too fast--this could be trouble
             // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
             // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
             ROS_INFO("odom vel: %f; sched vel: %f",odom_vel_,scheduled_vel); //debug/analysis output; can comment this out
             
-            double v_test = odom_vel_ - 1.2 * a_max*dt_callback_; //moving too fast--try decelerating faster than nominal a_max
+            double v_test = odom_vel_ - direction * 1.2 * a_max*dt_callback_; //moving too fast--try decelerating faster than nominal a_max
 
-            new_cmd_vel = (v_test > scheduled_vel) ? v_test : scheduled_vel; // choose larger of two options...don't overshoot scheduled_vel
+            new_cmd_vel = (fabs(v_test) > fabs(scheduled_vel)) ? (3*v_test+scheduled_vel)/4  : scheduled_vel; // choose larger of two options...don't overshoot scheduled_vel
         } else {
             new_cmd_vel = scheduled_vel; //silly third case: this is already true, if here.  Issue the scheduled velocity
         }
@@ -176,67 +170,6 @@ void masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_phi
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.
-        // will want to generalize this to handle multiple segments
-        // ideally, will want to receive segments dynamically as publications from a higher-level planner
-    }
-        
-    while (ros::ok() && rotate == true)       // WHEN THERE IS ROTATION $$$$$$$$$$$$$$$$
-    { 
-        
-        ros::spinOnce(); // allow callbacks to populate fresh data
-        rotation_done = odom_phi_ - start_phi;
-        ROS_INFO("Rotation Traveled: %f", rotation_done);
-        double rot_to_go = rot_phi - rotation_done;
-        double percent_left = rot_to_go/rot_phi * 100;
-        ROS_INFO("Rotation ToDo: %f, percent_left = %f", rot_to_go, percent_left);
-        
-        //------------------------------------------------------------------------------------
-        
-        //use segment_length_done to decide what OMEGA should be, as per plan
-        if (floor(rot_to_go*100)/100 == 0.0) { // at goal, or overshot; stop!
-            scheduled_omega=0.0;
-        }
-        else if (percent_left >= 20 || percent_left <=80) { //possibly should be braking to a halt  //      floor(sqrt(rot_to_go*rot_to_go)*10)/10 <= floor(R_dist_decel/10)*10
-            
-            scheduled_omega = sqrt(2 * sqrt(rot_to_go*rot_to_go) * alpha_max);
-            ROS_INFO("Rotation braking zone: omega_sched = %f",scheduled_omega);
-        }
-        else { // not ready to decel, so target vel is v_max, either accel to it or hold it
-            scheduled_omega = omega_max;
-
-        }
-        
-        //------------------------------------------------------------------------------------
-        
-        //how does the current OMEGA compare to the scheduled omega?
-        if (sqrt(odom_omega_ * odom_omega_) < sqrt(scheduled_omega * scheduled_omega)) {  // maybe we halted, e.g. due to estop or obstacle;
-            // may need to ramp up to omega_max; do so within ALPHA limits
-            double v_test = sqrt(odom_omega_ * odom_omega_) + alpha_max*dt_callback_; // if callbacks are slow, this could be abrupt
-            // operator:  c = (a>b) ? a : b;
-            new_cmd_omega = (v_test < sqrt(scheduled_omega * scheduled_omega)) ? v_test : sqrt(scheduled_omega * scheduled_omega); //choose lesser of two options
-            // this prevents overshooting scheduled_vel
-        } else if (sqrt(odom_omega_ * odom_omega_) > sqrt(scheduled_omega * scheduled_omega)) { //travelling too fast--this could be trouble
-            // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
-            // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
-            //ROS_INFO("odom omega: %f; sched omega: %f",odom_omega_,scheduled_omega); //debug/analysis output; can comment this out
-            
-            double v_test = sqrt(odom_omega_ * odom_omega_) - 1.2 * alpha_max*dt_callback_; //moving too fast--try decelerating faster than nominal a_max
-
-            new_cmd_omega = (v_test > sqrt(scheduled_omega * scheduled_omega)) ? v_test : sqrt(scheduled_omega * scheduled_omega); // choose larger of two options...don't overshoot scheduled_vel
-        } else {
-            new_cmd_omega = sqrt(scheduled_omega * scheduled_omega); //silly third case: this is already true, if here.  Issue the scheduled OMEGA
-        }
-        // Make the speed of rotation right NOW as new_cmd_OMEGA with the right direction of PHI (+ve or -ve).
-        cmd_vel.angular.z = (rot_to_go < 0.0) ? (-1)*new_cmd_omega : new_cmd_omega; 
-        
-        //------------------------------------------------------------------------------------
-        
-        if (floor(rot_to_go*100)/100 == 0.0) { //uh-oh...went too far already!
-            cmd_vel.angular.z = 0.0;  //command omega=0
-        }
-        vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_omega
-        rtimer.sleep(); // sleep for remainder of timed iteration
-        if (floor(rot_to_go*100)/100 == 0.0) break; // halt this node when this segment is complete.
         // will want to generalize this to handle multiple segments
         // ideally, will want to receive segments dynamically as publications from a higher-level planner
     }
@@ -270,16 +203,14 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 int main(int argc, char **argv) {
     ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
-    ros::Subscriber sub = nh.subscribe("/robot0/odom", 1, odomCallback);
+    ros::Subscriber sub = nh.subscribe("/odom", 1, odomCallback);
     
     // here is a description of five segments of a journey.
     // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
     
-    masterLoop(nh, 4.6, false, 0.0);
-    masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, 12.4, false, 0.0);
-    masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, 9.0, false, 0.0);
+    masterLoop(nh, +0.5);
+    //masterLoop(nh, 0.0, true, -1.57);
+    masterLoop(nh, -0.5);
 
     ROS_INFO("completed move distance");
 }

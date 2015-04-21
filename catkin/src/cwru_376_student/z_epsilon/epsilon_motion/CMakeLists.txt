@@ -18,7 +18,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 # cs_add_libraries(my_lib src/my_lib.cpp)   
 
 # Executables
-cs_add_executable(approach_table src/approach_table.cpp)
+cs_add_executable(simple_motion src/simple_motion.cpp)
 cs_add_executable(epsilon_steering src/epsilon_steering.cpp)
 #cs_add_executable(example_steering_algorithm2 src/example_steering_algorithm_hidden.cpp)
 # target_link_library(example my_lib)
