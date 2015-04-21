@@ -255,6 +255,9 @@ int main(int argc, char** argv) {
     //home_state[3] = -0.13549;
     //home_state[4] = -0.363732;
     //home_state[5] = -0.0716817;
+	
+
+// Left arm home position: [-1.5400700569152832, -1.8655591011047363, -0.4005431830883026, -0.04174210503697395, -0.8261124491691589, 1.5975639820098877]
 
     //Home POse for Physical Abby, the actual robot...
     home_state[0] = 5.248869570095849e-07;
