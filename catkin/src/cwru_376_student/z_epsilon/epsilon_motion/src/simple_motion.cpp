@@ -49,18 +49,16 @@ therefore, theta = 2*atan2(qz,qw)
 
 
 // set some dynamic limits...
-const double v_max = 5.0; //1m/sec is a slow walk
+const double v_max = 1.0; //1m/sec is a slow walk
 const double v_min = 0.1; // if command velocity too low, robot won't move
-const double a_max = 0.1; //1m/sec^2 is 0.1 g's
+const double a_max = 0.9; //1m/sec^2 is 0.1 g's
 //const double a_max_decel = 0.1; // TEST
-const double omega_max = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev $$$$ I think it is too much ??!
-const double alpha_max = 0.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega  $$$$ I think it is too much ??!
 const double DT = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
 
 const std::string odomT = "/odom"; // /robot0/odom or /odom
 const std::string cmd_velT = "/cmd_vel"; // robot0/cmd_vel or /cmd_vel
 
-const double MIN_SAFE_DISTANCE = 0.09; //in meters for Lidar
+const double MIN_SAFE_DISTANCE = 0.27; //in meters for Lidar
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
@@ -89,7 +87,7 @@ double dt_callback_=0.0;
 
 // The masterLoop method handles the node from main() and takes either a length forward or phi to rotate to. a boolean was defined to distinguish between the two... 
 
-void masterLoop(ros::NodeHandle& nh, double seg_len) { 
+double masterLoop(ros::NodeHandle& nh, double seg_len) { 
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
     ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>(cmd_velT, 1);
@@ -166,7 +164,7 @@ void masterLoop(ros::NodeHandle& nh, double seg_len) {
             // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
             // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
             scheduled_vel = sqrt(2 * dist_to_go * a_max) * direction;
-            ROS_INFO("braking zone: v_sched = %f",scheduled_vel);
+            ROS_WARN("Breaking ZOne: %f", scheduled_vel);
         }
         else { // not ready to decel, so target vel is v_max, either accel to it or hold it
             scheduled_vel = v_max * direction;
@@ -216,24 +214,26 @@ void masterLoop(ros::NodeHandle& nh, double seg_len) {
             if (pause_lidar && print_lidar) {
                 ROS_WARN("Stopping because an obstacle was detected by the Lidar");
                 print_lidar = false;
-                cmd_vel.linear.x = -0.5;
+                cmd_vel.linear.x = -0.2; // or let us break after 
             }
             //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
-             // 
+           //cmd_vel.linear.x = 0.0 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
+	    //break;
         }
         print_soft = true;
         print_hard = true;
         print_lidar = true;
-        
+        if (direction < 0) cmd_vel.linear.x = cmd_vel.linear.x * 1.3;
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.
         // will want to generalize this to handle multiple segments
         // ideally, will want to receive segments dynamically as publications from a higher-level planner
     }
+    return segment_length_done;
 }
 void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     //here's a trick to compute the delta-time between successive callbacks:
@@ -300,6 +300,8 @@ void softEstopCallback (const std_msgs::Bool& estop_soft) {
     }
  }
 
+void progCommCallBack { 
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
@@ -312,9 +314,9 @@ int main(int argc, char **argv) {
     // here is a description of five segments of a journey.
     // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
     
-    masterLoop(nh, +0.5);
+    double dist_togo_back = masterLoop(nh, +0.5);
     //masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, -0.5);
+    masterLoop(nh, -dist_togo_back);
 
     ROS_INFO("completed move distance");
 }
