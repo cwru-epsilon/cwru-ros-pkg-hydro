@@ -1,111 +1,323 @@
+// The original code credit goes to: cwru-robotics team
+// https://github.com/cwru-robotics/
+// Dr. Wyatt Newman
+// Engr. Luc Battaieb
+
+// This project is one of EECS378 Mobile Robotics assignments, Spring 2015.
+
+// This project was edited in order to modulate the velocity (linear and angular) commands 
+// to comply with a speed limit, v_max and omega_max, acceleration limits, +/-a_max and +/-alpha_max,
+// and come to a halt gracefully at the end of each intended segment...
+
+// Project Team: (Team Epsilon ε)
+// - Alaa Badokhon
+// - Josh Immerman
+// - Dongyu Wu
+// - Eric Carlson
+// https://github.com/cwru-epsilon
+
+// try this, e.g. with roslaunch stdr_launchers server_with_map_and_gui_plus_robot.launch
+// or: roslaunch cwru_376_launchers stdr_glennan_2.launch
+// watch resulting velocity commands with: rqt_plot /jinx/cmd_vel/linear/x (or jinx/cmd_vel...)
+
+// notes on quaternions:
+/*
+From:
+http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToQuaternion/
+qx = ax * sin(angle/2)
+qy = ay * sin(angle/2)
+qz = az * sin(angle/2)
+qw = cos(angle/2)
+so, quaternion in 2-D plane (x,y,theta):
+ax=0, ay=0, az = 1.0
+qx = 0;
+qy = 0;
+qz = sin(angle/2)
+qw = cos(angle/2)
+therefore, theta = 2*atan2(qz,qw)
+*/
+
 #include <ros/ros.h>
+#include <std_msgs/Float64.h>
+#include <std_msgs/Float32.h>
 #include <geometry_msgs/Twist.h>
-int main(int argc, char **argv)
-{
-ros::init(argc,argv,"robot0_commander"); // name of this node 
-ros::NodeHandle nh; // two lines to create a publisher object that can talk to ROS
-//stdr "robot0" is expecting to receive commands on topic: /robot0/cmd_vel
-// commands are of type geometry_msgs/Twist, but they use only velocity in x dir and
-//  yaw rate in z-dir; other 4 fields will be ignored
-ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1);
-// change topic to command abby...
-//ros::Publisher cmd_publisher = nh.advertise<geometry_msgs::Twist>("abby/cmd_vel",1);
-ros::Rate sleep_timer(100); //let's make a 100Hz timer
-
-//create a variable of type "Twist", as defined in: /opt/ros/hydro/share/geometry_msgs
-// any message published on a ROS topic must have a pre-defined format, so subscribers know how to
-// interpret the serialized data transmission
-geometry_msgs::Twist twist_cmd;
-// look at the components of a message of type geometry_msgs::Twist by typing:
-// rosmsg show geometry_msgs/Twist
-// It has 6 fields.  Let's fill them all in with some data:
-twist_cmd.linear.x = 0.0;
-twist_cmd.linear.y = 0.0;
-twist_cmd.linear.z = 0.0;
-twist_cmd.angular.x = 0.0;
-twist_cmd.angular.y = 0.0;
-twist_cmd.angular.z = 0.0;
-
-twist_cmd.linear.x = 0.4;
+#include <nav_msgs/Odometry.h>
+#include <math.h>
+#include <std_msgs/Bool.h>
+#include <string>
 
 
-// timer test...print out a message every 1 second
-ROS_INFO("count-down");
-for (int j=3;j>0;j--) {
-    ROS_INFO("%d",j);
-    for (int i = 0; i<100;i++)
-        sleep_timer.sleep();
+
+// set some dynamic limits...
+const double v_max = 1.0; //1m/sec is a slow walk
+const double v_min = 0.1; // if command velocity too low, robot won't move
+const double a_max = 0.9; //1m/sec^2 is 0.1 g's
+//const double a_max_decel = 0.1; // TEST
+const double DT = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
+
+const std::string odomT = "/odom"; // /robot0/odom or /odom
+const std::string cmd_velT = "/cmd_vel"; // robot0/cmd_vel or /cmd_vel
+
+const double MIN_SAFE_DISTANCE = 0.27; //in meters for Lidar
+bool pause_soft = false;
+bool pause_hard = false;
+bool pause_lidar = false;
+bool print_soft = true;
+bool print_hard = true;
+bool print_lidar = true;
+bool print_all = true;
+
+// globals for communication w/ callbacks:
+double odom_vel_ = 0.0; // measured/published system speed
+double odom_omega_ = 0.0; // measured/published system yaw rate (spin)
+double odom_x_ = 0.0;
+double odom_y_ = 0.0;
+double odom_phi_ = 0.0;
+double dt_odom_ = 0.0;
+ros::Time t_last_callback_;
+double dt_callback_=0.0;
+
+// receive odom messages and strip off the components we want to use
+// tested this OK w/ stdr
+
+// receive the pose and velocity estimates from the simulator (or the physical robot)
+// copy the relevant values to global variables, for use by "main"
+// Note: stdr updates odom only at 10Hz; Jinx is 50Hz (?)
+
+
+// The masterLoop method handles the node from main() and takes either a length forward or phi to rotate to. a boolean was defined to distinguish between the two... 
+
+double masterLoop(ros::NodeHandle& nh, double seg_len) { 
+    //create a publisher object that can talk to ROS and issue twist messages on named topic;
+    // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
+    ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>(cmd_velT, 1);
+    ros::Rate rtimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
+     // desired travel distance in meters; anticipate travelling multiple segments
+    
+    //here's a subtlety:  might be tempted to measure distance to the goal, instead of distance from the start.
+    // HOWEVER, will NEVER satisfy distance to goal = 0 precisely, but WILL eventually move far enought to satisfy distance travelled condition
+    double segment_length_done = 0.0; // need to compute actual distance travelled within the current segment
+    double start_x = 0.0; // fill these in with actual values once odom message is received
+    double start_y = 0.0; // subsequent segment start coordinates should be specified relative to end of previous segment
+    double scheduled_vel = 0.0; //desired vel, assuming all is per plan
+    double new_cmd_vel = 0.1; // value of speed to be commanded; update each iteration
+    
+    double start_phi = 0.0; // Compare with odom_phi
+
+    geometry_msgs::Twist cmd_vel; //create a variable of type "Twist" to publish speed/spin commands
+
+    cmd_vel.linear.x = 0.0; // initialize these values to zero
+    cmd_vel.linear.y = 0.0;
+    cmd_vel.linear.z = 0.0;
+    cmd_vel.angular.x = 0.0;
+    cmd_vel.angular.y = 0.0;
+    cmd_vel.angular.z = 0.0;
+
+    // let's wait for odom callback to start getting good values...
+    odom_omega_ = 1000000; // absurdly high
+    ROS_INFO("waiting for valid odom callback...");
+    t_last_callback_ = ros::Time::now(); // initialize reference for computed update rate of callback
+    while (odom_omega_ > 1000) {
+        rtimer.sleep();
+        ros::spinOnce();
+    }
+    ROS_INFO("received odom message; proceeding");
+    start_x = odom_x_;
+    start_y = odom_y_;
+    start_phi = odom_phi_;
+    ROS_INFO("start pose: x %f, y= %f, phi = %f", start_x, start_y, start_phi);
+
+    // compute some properties of trapezoidal velocity profile plan:
+    double T_accel = v_max / a_max; //...assumes start from rest
+    double T_decel = v_max / a_max; //(for same decel as accel); assumes brake to full halt
+    double dist_accel = 0.5 * a_max * (T_accel * T_accel); //distance rqd to ramp up to full speed
+    double dist_decel = 0.5 * a_max * (T_decel * T_decel);; //same as ramp-up distance
+    double direction = (seg_len > 0) ? 1 : -1;
+    seg_len = fabs(seg_len); // take away the sign now...
+    
+    //-----------------------------------------------------------------------------------
+//----------------------How to Pause The Robot---------------------------------------
+    
+    //rostopic pub [topic] [msg_type] [args]
+    // In Terminal...
+    //rostopic pub soft_estop std_msgs/Bool 'true' // To toggle the soft Estop from Terminal
+//-----------------------------------------------------------------------------------  
+    
+    // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
+    while (ros::ok()) 
+    {   
+        ros::spinOnce(); // allow callbacks to populate fresh data
+        // compute distance travelled so far:
+        double delta_x = odom_x_ - start_x;
+        double delta_y = odom_y_ - start_y;
+        segment_length_done = sqrt(delta_x * delta_x + delta_y * delta_y); //Always +VE
+        ROS_INFO("dist travelled: %f", segment_length_done);
+        double dist_to_go = seg_len - segment_length_done; //always +VE
+        
+        //----------------------------------------------------------------------------------
+        
+        //use segment_length_done to decide what vel should be, as per plan
+        if (dist_to_go<= 0.0) { // at goal, or overshot; stop!
+            scheduled_vel=0.0;
+        }
+        else if (dist_to_go <= dist_decel) { //possibly should be braking to a halt
+            // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+            // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+            scheduled_vel = sqrt(2 * dist_to_go * a_max) * direction;
+            ROS_WARN("Breaking ZOne: %f", scheduled_vel);
+        }
+        else { // not ready to decel, so target vel is v_max, either accel to it or hold it
+            scheduled_vel = v_max * direction;
+        }
+        
+        //------------------------------------------------------------------------------------
+        
+        //how does the current velocity compare to the scheduled vel?
+        if (fabs(odom_vel_) < fabs(scheduled_vel)) {  // maybe we halted, e.g. due to estop or obstacle;
+            // may need to ramp up to v_max; do so within accel limits
+            double v_test = odom_vel_ + a_max*dt_callback_*direction; // if callbacks are slow, this could be abrupt
+            // operator:  c = (a>b) ? a : b;
+            new_cmd_vel = (fabs(v_test) < fabs(scheduled_vel)) ? v_test : scheduled_vel; //choose lesser of two options
+            // this prevents overshooting scheduled_vel
+        } else if (fabs(odom_vel_) > fabs(scheduled_vel)) { //travelling too fast--this could be trouble
+            // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
+            // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
+            ROS_INFO("odom vel: %f; sched vel: %f",odom_vel_,scheduled_vel); //debug/analysis output; can comment this out
+            
+            double v_test = odom_vel_ - direction * 1.2 * a_max*dt_callback_; //moving too fast--try decelerating faster than nominal a_max
+
+            new_cmd_vel = (fabs(v_test) > fabs(scheduled_vel)) ? (3*v_test+scheduled_vel)/4  : scheduled_vel; // choose larger of two options...don't overshoot scheduled_vel
+        } else {
+            new_cmd_vel = scheduled_vel; //silly third case: this is already true, if here.  Issue the scheduled velocity
+        }
+        ROS_INFO("cmd vel: %f",new_cmd_vel); // debug output
+        cmd_vel.linear.x = new_cmd_vel;
+        
+        //------------------------------------------------------------------------------------
+        
+        if (dist_to_go <= 0.0) { //uh-oh...went too far already!
+            cmd_vel.linear.x = 0.0;  //command vel=0
+        }
+        
+        while (pause_soft || pause_hard || pause_lidar) {
+            print_all = false;
+            if (pause_soft && print_soft) { 
+                ROS_WARN("Stopping because of Soft Estop");
+                print_soft = false;
+                cmd_vel.linear.x = 0.0;
+            }
+            if (pause_hard && print_hard) {
+                ROS_WARN("Stopping because of Hard Estop");
+                print_hard = false;
+                cmd_vel.linear.x = 0.0;
+            }
+            if (pause_lidar && print_lidar) {
+                ROS_WARN("Stopping because an obstacle was detected by the Lidar");
+                print_lidar = false;
+                cmd_vel.linear.x = -0.2; // or let us break after 
+            }
+            //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
+           //cmd_vel.linear.x = 0.0 
+            cmd_vel.angular.z = 0.0;
+            vel_cmd_publisher.publish(cmd_vel);
+            ros::spinOnce();
+	    //break;
+        }
+        print_soft = true;
+        print_hard = true;
+        print_lidar = true;
+        if (direction < 0) cmd_vel.linear.x = cmd_vel.linear.x * 1.3;
+        vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
+        rtimer.sleep(); // sleep for remainder of timed iteration
+        if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.
+        // will want to generalize this to handle multiple segments
+        // ideally, will want to receive segments dynamically as publications from a higher-level planner
+    }
+    return segment_length_done;
+}
+void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
+    //here's a trick to compute the delta-time between successive callbacks:
+    dt_callback_ = (ros::Time::now() - t_last_callback_).toSec();
+    t_last_callback_ = ros::Time::now(); // let's remember the current time, and use it next iteration
+
+    if (dt_callback_ > 0.15) { // on start-up, and with occasional hiccups, this delta-time can be unexpectedly large
+        dt_callback_ = 0.1; // can choose to clamp a max value on this, if dt_callback is used for computations elsewhere
+        ROS_WARN("large dt; dt = %lf", dt_callback_); // let's complain whenever this happens
+    }
+    
+    // copy some of the components of the received message into global vars, for use by "main()"
+    // we care about speed and spin, as well as position estimates x,y and heading
+    odom_vel_ = odom_rcvd.twist.twist.linear.x;
+    odom_omega_ = odom_rcvd.twist.twist.angular.z;
+    odom_x_ = odom_rcvd.pose.pose.position.x;
+    odom_y_ = odom_rcvd.pose.pose.position.y;
+    //odom publishes orientation as a quaternion.  Convert this to a simple heading
+    // see notes above for conversion for simple planar motion
+    double quat_z = odom_rcvd.pose.pose.orientation.z;
+    double quat_w = odom_rcvd.pose.pose.orientation.w;
+    odom_phi_ = 2.0*atan2(quat_z, quat_w); // cheap conversion from quaternion to heading for planar motion
+
+    // the output below could get annoying; may comment this out, but useful initially for debugging
+    ROS_INFO("odom CB: x = %f, y= %f, phi = %f, v = %f, omega = %f", odom_x_, odom_y_, odom_phi_, odom_vel_, odom_omega_);
 }
 
-int niters = 1200; //1200 iters at 100Hz is 12 seconds;
-//iteration counter; at 10ms/iteration, and 0.2m/sec, expect 2mm/iter
-// should move by 2m over 12 sec
-ROS_INFO("Moving forward...");
-for (int i=0;i<niters;i++) {
-    cmd_publisher.publish(twist_cmd); // really, should only need to publish this once, but no hard done
-    sleep_timer.sleep(); // sleep for (remainder of) 10m
+// This Callback is for handling hard estop triggers (Hardware estops are handled in estop_listener_epsilon.cpp ..
+void hardEstopCallback (const std_msgs::Bool& estop_hard) {
+    if (estop_hard.data == true) {
+        if (print_hard) ROS_WARN("Hard Estop was triggered and ON (Robot is stopped)");
+        pause_hard = true;
+    }
+    else if (estop_hard.data == false && pause_hard == true) {
+        ROS_WARN("Hard Estop was triggered and OFF (Robot is in motion) :)");
+        pause_hard = false;
+    }
 }
 
-
-twist_cmd.linear.x = 0.0;
-twist_cmd.angular.z = -0.314;
-niters=500; // 5 sec
-ROS_INFO("Time to rotate negative");
-for (int i=0;i<niters;i++) {
-    cmd_publisher.publish(twist_cmd); // really, should only need to publish this once, but no hard done
-    sleep_timer.sleep(); // sleep for (remainder of) 10m
+// This Callback is for handling Lidar detections, handled in lidar_alarm_epsilon.cpp..
+void laserMsgCallback (const std_msgs::Float32& dist) {
+    //ROS_INFO("Lidar: distance to obstacle is %f", dist.data);
+    if (dist.data<MIN_SAFE_DISTANCE) {
+        if (print_lidar) ROS_WARN("DANGER, WILL ROBINSON!!, Obstacle in %f meters... ", dist.data);
+        pause_lidar = true;
+    }
+    else if (dist.data>=MIN_SAFE_DISTANCE && pause_lidar) {
+        pause_lidar = false; //if (dist.data>MIN_SAFE_DISTANCE && pause_lidar) pause_lidar = false;
+        ROS_WARN("Obstacle is out of the way now... :)");
+    }    
 }
 
-twist_cmd.linear.x = 0.4;
-twist_cmd.angular.z = 0.0;
-niters = 3000; //3000 iters at 100Hz is 30 seconds;
-//iteration counter; at 10ms/iteration, and 0.2m/sec, expect 2mm/iter
-// should move by 2m over 12 sec
-ROS_INFO("Moving forward...");
-for (int i=0;i<niters;i++) {
-    cmd_publisher.publish(twist_cmd); // really, should only need to publish this once, but no hard done
-    sleep_timer.sleep(); // sleep for (remainder of) 10m
+// This Callback is for handling hard estop triggers...
+void softEstopCallback (const std_msgs::Bool& estop_soft) {
+    if (estop_soft.data == true) {
+        if (print_soft) ROS_WARN("Soft Estop was triggered and ON");
+        pause_soft = true;
+    }
+    else if (estop_soft.data == false && pause_soft == true) {
+        ROS_WARN("Soft Estop was triggered and OFF :)");
+        pause_soft = false;
+        //if (rot_value) masterLoop(nh, 0.0, true, rem_dist_);
+        //else masterLoop(nh, rem_dist_, false, 0.0 );
+    }
+ }
+
+void progCommCallBack() { }
+
+int main(int argc, char **argv) {
+    ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
+    ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
+    ros::Subscriber vel_sub = nh.subscribe(odomT, 1, odomCallback); // Subscribing to jinx/odom (which has to be changed to jinx/odom for actual robot simulation).
+    ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback); // Subscribing to lider_dist, which is published or advertised by lidar_alarm_epsilon.cpp
+    ros::Subscriber soft_estop = nh.subscribe("soft_estop", 1, softEstopCallback); // Subscribing to soft_estop, which is published by the user (manually on the terminal)
+    ros::Subscriber hard_estop = nh.subscribe("hardware_estop", 1, hardEstopCallback); // Subscribing to hardware_estop, which is published by estop_listener_epsilon.cpp
+
+    
+    // here is a description of five segments of a journey.
+    // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
+    
+    masterLoop(nh, +0.5);
+    //masterLoop(nh, 0.0, true, -1.57);
+    //masterLoop(nh, -0.5);
+
+    ROS_INFO("completed move distance");
 }
-
-twist_cmd.linear.x = 0.0;
-twist_cmd.angular.z = -0.314;
-niters=500; // 5 sec
-ROS_INFO("Time to rotate negative");
-for (int i=0;i<niters;i++) {
-    cmd_publisher.publish(twist_cmd); // really, should only need to publish this once, but no hard done
-    sleep_timer.sleep(); // sleep for (remainder of) 10m
-}
-
-twist_cmd.linear.x = 0.4;
-twist_cmd.angular.z = 0.0;
-niters = 2300; //3000 iters at 100Hz is 30 seconds;
-//iteration counter; at 10ms/iteration, and 0.2m/sec, expect 2mm/iter
-// should move by 2m over 12 sec
-ROS_INFO("Moving forward...");
-for (int i=0;i<niters;i++) {
-    cmd_publisher.publish(twist_cmd); // really, should only need to publish this once, but no hard done
-    sleep_timer.sleep(); // sleep for (remainder of) 10m
-}
-
-twist_cmd.linear.x = 0.0;
-twist_cmd.angular.z = -0.314;
-niters=500; // 5 sec
-ROS_INFO("Time to rotate negative");
-for (int i=0;i<niters;i++) {
-    cmd_publisher.publish(twist_cmd); // really, should only need to publish this once, but no hard done
-    sleep_timer.sleep(); // sleep for (remainder of) 10m
-}
-
-
-ROS_INFO("my work here is done");
-while (ros::ok()) 
-{
-twist_cmd.linear.x = 0.0;
-twist_cmd.angular.z = 0;
-cmd_publisher.publish(twist_cmd); // and halt
-}
-
-
-return 0;
-} 
 

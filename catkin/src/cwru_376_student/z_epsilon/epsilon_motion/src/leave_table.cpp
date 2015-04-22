@@ -300,7 +300,7 @@ void softEstopCallback (const std_msgs::Bool& estop_soft) {
     }
  }
 
-void progCommCallBack { 
+void progCommCallBack() { }
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
@@ -314,9 +314,9 @@ int main(int argc, char **argv) {
     // here is a description of five segments of a journey.
     // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
     
-    double dist_togo_back = masterLoop(nh, +0.5);
+    //masterLoop(nh, +0.5);
     //masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, -dist_togo_back);
+    masterLoop(nh, -0.5);
 
     ROS_INFO("completed move distance");
 }

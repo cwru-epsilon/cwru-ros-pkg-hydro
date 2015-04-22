@@ -13,7 +13,9 @@
 
 #include <interactive_markers/interactive_marker_server.h>
 #include <irb120_kinematics.h>
-#include <cwru_srv/simple_bool_service_message.h> // this is a pre-defined service message, contained in shared "cwru_srv" package
+#include <cwru_srv/simple_bool_service_message.h>
+#include <cwru_srv/simple_int_service_message.h> // this is a pre-defined service message, contained in shared "cwru_srv" package
+#include <cwru_srv/path_service_message.h>
 #include "trajectory_msgs/JointTrajectory.h"
 #include "trajectory_msgs/JointTrajectoryPoint.h"
 #include <sensor_msgs/JointState.h>
@@ -70,6 +72,33 @@ void markerListenerCB(
     g_R = g_quat.matrix();      
 
 
+}
+
+bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv::path_service_messageResponse& response) {
+    geometry_msgs::PoseStamped pose;
+    //double x, y, phi;
+    geometry_msgs::Quaternion quaternion;
+    ROS_INFO("service append-Path callback activated");
+    /* Path message:
+     * #An array of poses that represents a Path for a robot to follow
+        Header header
+        geometry_msgs/PoseStamped[] poses
+     */
+    g_marker_pose_in.header = request.path.poses[0].header;
+    g_marker_pose_in.pose=request.path.poses[0].pose;
+    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
+    
+    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
+    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
+    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
+    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
+    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
+    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;   
+    g_R = g_quat.matrix();     
+    
+    response.resp = true; // boring, but valid response info
+    return true;
 }
 
 void jointStateCB(
@@ -240,6 +269,8 @@ int main(int argc, char** argv) {
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);   
     
+    ros::ServiceServer append_path_ = nh.advertiseService("appendPoseService", appendPoseService);
+    
     Eigen::Vector3d p;
     Eigen::Vector3d n_des,t_des,b_des;
     std::vector<Vectorq6x1> q6dof_solns;
@@ -305,9 +336,9 @@ int main(int argc, char** argv) {
     while (tferr) {
         tferr=false;
         try {
-                //try to lookup transform from target frame "odom" to source frame "map"
+            //try to lookup transform from target frame "odom" to source frame "map"
             //The direction of the transform returned will be from the target_frame to the source_frame. 
-             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
                 g_tfListener->lookupTransform("base_link", "link1", ros::Time(0), g_armlink1_wrt_baseLink);
             } catch(tf::TransformException &exception) {
                 ROS_ERROR("%s", exception.what());

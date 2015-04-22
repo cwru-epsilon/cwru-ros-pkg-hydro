@@ -48,7 +48,7 @@ geometry_msgs::Pose xyPhi2Pose(double x, double y, double phi) {
 
 int main(int argc, char **argv) {
     double dt=0.01;
-    ros::init(argc, argv, "test_path_sender"); // name of this node 
+    ros::init(argc, argv, "path_sender"); // name of this node 
     ros::NodeHandle nh; 
     ros::ServiceClient client = nh.serviceClient<cwru_srv::path_service_message>("appendPathService");
 
@@ -61,17 +61,16 @@ int main(int argc, char **argv) {
     
     // fill in the interesting data: (x,y) and phi = location and heading THOSE ARE FROM ACTUAL AMCL MAP POINTS.....
 
-    
-	//vertex 2:
-    x=5.14055403825;
-	y=12.0505654959;
-    phi=-0.924655161966;
+    //Goal Pose (Close to the table):
+    //x=5.14055403825;
+    //y=12.0505654959;
+    //phi=-0.924655161966;
 
-    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    path_message.request.path.poses.push_back(vertex);
+    //ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    //vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    //path_message.request.path.poses.push_back(vertex);
 
-    //vertex 3: 
+    //Home Pose (Home): 
     x=-3.31683585831;
     y=20.6154034727;
     phi=0.926395175302;
@@ -80,37 +79,6 @@ int main(int argc, char **argv) {
     vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
     
-	//vertex 4:
-    x=0.698631235235;
-    y=24.5858269437;
-    phi=0.368625478382;
-    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    path_message.request.path.poses.push_back(vertex);
-
-
-    //    x=1.0;
-    //    y=2.0
-//    phi=0.123;
-//    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-//    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-//    path_message.request.path.poses.push_back(vertex);
-//
-//    //vertex 2:
-//    x=3.0;
-//    y=4.0;
-//    phi=0.567;
-//    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-//    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi  
-//    path_message.request.path.poses.push_back(vertex);
-//    
-//    //vertex 3:
-//    x=5.0;
-//    y=6.0;
-//    phi=2.345;
-//    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-//    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi  
-//    path_message.request.path.poses.push_back(vertex);
 
     //transmit this path message:
     if (client.call(path_message)) {

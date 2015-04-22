@@ -11,6 +11,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h> 
 #include <geometry_msgs/PointStamped.h>
+//#include <geometry_msgs/Pose.h>
+#include <interactive_markers/interactive_marker_server.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -19,6 +21,7 @@
 #include <pcl/features/normal_3d.h>
 
 #include <cwru_srv/simple_int_service_message.h> // this is a pre-defined service message, contained in shared "cwru_srv" package
+#include <cwru_srv/path_service_message.h>
 
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
@@ -99,6 +102,8 @@ std::vector<int> g_indices_of_plane; //indices of patch that do not contain outl
 
 const tf::TransformListener* tfListener_;
 tf::StampedTransform kToB_;    
+
+
 
 //use this service to set processing modes interactively
 bool modeService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
@@ -553,15 +558,22 @@ int main(int argc, char** argv) {
     
     // subscribe to "selected_points", which is published by Rviz tool
     ros::Subscriber selectedPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/selected_points", 1, selectCB);
-
     // have rviz display both of these topics
     ros::Publisher pubCloud = nh.advertise<sensor_msgs::PointCloud2> ("/plane_model", 1);
     ros::Publisher pubPcdCloud = nh.advertise<sensor_msgs::PointCloud2> ("/kinect_pointcloud", 1);
-
     // service used to interactively change processing modes
     ros::ServiceServer service = nh.advertiseService("process_mode", modeService);
-
+    
+    //To send the Goal Pose
+    ros::ServiceClient client = nh.serviceClient<cwru_srv::path_service_message>("appendPoseService");
+    cwru_srv::path_service_message path_message;
+    geometry_msgs::PoseStamped goalCenter;  // this contains a header and a pose; the pose contains a point and a quaternion
+    
+    goalCenter.header.stamp = ros::Time::now();
+    goalCenter.header.frame_id = "base_link"; // specify this, so tf will know how to transform it
+    
     std::vector<int> indices_pts_above_plane;
+    
     
     ROS_INFO("waiting for tf between kinect_pc_fram and base_link...");
     tf::TransformListener listener_;
@@ -711,7 +723,22 @@ int main(int argc, char** argv) {
 			}
 		    }
 		    // Now we have the fixed g_cylinder_origin. it points to the top of that object so send this in a specific topic. Like interactive marker.....
-			cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
+                    cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
+                    goalCenter.pose.position.x = g_cylinder_origin[0];
+                    goalCenter.pose.position.y = g_cylinder_origin[1];
+                    goalCenter.pose.position.z = g_cylinder_origin[2];
+                    goalCenter.pose.orientation.x = 0;
+                    goalCenter.pose.orientation.y = 0;
+                    goalCenter.pose.orientation.z = 0;
+                    goalCenter.pose.orientation.w = 0;
+                    path_message.request.path.poses.push_back(goalCenter);
+                    if (client.call(path_message)) {
+                        ROS_INFO("got ack from server");
+                    } 
+                    else {
+                        ROS_ERROR("Failed to call service lookup_by_name");
+                        //return 1;
+                    }
                     break;
                 default:
                     ROS_WARN("this mode is not implemented");
