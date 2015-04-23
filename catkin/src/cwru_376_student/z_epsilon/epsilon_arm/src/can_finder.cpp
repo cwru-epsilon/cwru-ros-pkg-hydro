@@ -82,8 +82,8 @@ const int FIND_ON_TABLE = 5;
 const double Z_EPS = 0.01; //choose a tolerance for plane fitting, e.g. 1cm
 const double R_EPS = 0.05; // choose a tolerance for cylinder-fit outliers
 
-const double R_CYLINDER = 0.085; //estimated from ruler tool...example to fit a cyclinder of this radius to data
-const double H_CYLINDER = 0.3; // estimated height of cylinder
+const double R_CYLINDER = 0.065; //estimated from ruler tool...example to fit a cyclinder of this radius to data
+const double H_CYLINDER = 0.12; // estimated height of cylinder
 const double AVG_POINT_DIST =  0.005715;
 Eigen::Vector3f g_cylinder_origin; // origin of model for cylinder registration
 

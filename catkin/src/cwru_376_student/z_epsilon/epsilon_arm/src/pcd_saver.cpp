@@ -49,15 +49,16 @@ const tf::TransformListener* tfListener_;
 tf::StampedTransform kToB_;    
 
 void kinectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
-    
+    //ROS_WARN("Original Cloud Frame ID: %f", cloud->header.frame_id );
     pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
     pcl::PointCloud<pcl::PointXYZRGB> cloud_trans;
     
     //STEP 1 Convert sensor_msgs to pcl
     pcl::fromROSMsg(*cloud,cloud_in);
+    //cloud->header.stamp=ros::Time::now();
     //STEP 2 Convert xb3 message to center_bumper frame (i think it is better this way)
     try {
-        tfListener_->lookupTransform("base_link", cloud->header.frame_id, ros::Time(0), kToB_);
+        tfListener_->lookupTransform("base_link", "camera_depth_optical_frame", ros::Time(0), kToB_);
     }
     catch (tf::TransformException ex)  {
         ROS_ERROR("%s",ex.what());
@@ -65,7 +66,8 @@ void kinectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     // Transform point cloud
     pcl_ros::transformPointCloud (cloud_in,cloud_trans,kToB_);  
     cloud_trans.header.frame_id="base_link";
-    
+
+    cloud_trans.header.stamp= ros::Time::now().toSec();
     //For us to fetch cloud_trans into g_pclKinect, Here is a trick... :)
     sensor_msgs::PointCloud2 temp;  
     pcl::toROSMsg(cloud_trans, temp);//*g_pclKinect);
@@ -85,7 +87,7 @@ int main(int argc, char** argv) {
     tfListener_=&listener_;
     ROS_INFO("tf is good");
     // Subscribers
-    ros::Subscriber getPCLPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/kinect/depth/points", 1, kinectCB);
+    ros::Subscriber getPCLPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/camera/depth/points", 1, kinectCB);
     
     while (ros::ok()) {       
         if (got_cloud) {
