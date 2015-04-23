@@ -63,7 +63,7 @@ void kinectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     //STEP 2 Convert xb3 message to center_bumper frame (i think it is better this way)
     try {
         //cloud->header.stamp=ros::Time::now();
-        tfListener_->lookupTransform("base_link", "camera_depth_optical_frame", cloud->header.stamp, kToB_);
+        tfListener_->lookupTransform("base_link", "camera_depth_optical_frame", ros::Time(0), kToB_);
     }
     catch (tf::TransformException ex)  {
         ROS_ERROR("%s",ex.what());

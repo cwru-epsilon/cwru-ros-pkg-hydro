@@ -82,7 +82,7 @@ const int FIND_ON_TABLE = 5;
 const double Z_EPS = 0.01; //choose a tolerance for plane fitting, e.g. 1cm
 const double R_EPS = 0.05; // choose a tolerance for cylinder-fit outliers
 
-const double R_CYLINDER = 0.065; //estimated from ruler tool...example to fit a cyclinder of this radius to data
+const double R_CYLINDER = 0.0325; //estimated from ruler tool...example to fit a cyclinder of this radius to data
 const double H_CYLINDER = 0.12; // estimated height of cylinder
 const double AVG_POINT_DIST =  0.005715;
 Eigen::Vector3f g_cylinder_origin; // origin of model for cylinder registration
@@ -708,7 +708,7 @@ int main(int argc, char** argv) {
 			break;
 		    }
 		    else { // tolarances were figured out from by trials and error...
-			while((fabs(dEdCx) > 0.015 || fabs(dEdCy) > 7e-5 || fabs(E) > 2e-5) && ros::ok()) { 
+			while((fabs(dEdCx) > 0.015 || fabs(dEdCy) > 7e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
 			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
                         can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
 
@@ -726,11 +726,11 @@ int main(int argc, char** argv) {
                     cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
                     goalCenter.pose.position.x = g_cylinder_origin[0];
                     goalCenter.pose.position.y = g_cylinder_origin[1];
-                    goalCenter.pose.position.z = g_cylinder_origin[2];
+                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.2;//+0.8;
                     goalCenter.pose.orientation.x = 0;
                     goalCenter.pose.orientation.y = 0;
-                    goalCenter.pose.orientation.z = 0;
-                    goalCenter.pose.orientation.w = 0;
+                    goalCenter.pose.orientation.z = sqrt(2)/2;
+                    goalCenter.pose.orientation.w = -sqrt(2)/2;
                     path_message.request.path.poses.push_back(goalCenter);
                     if (client.call(path_message)) {
                         ROS_INFO("got ack from server");

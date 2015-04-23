@@ -86,8 +86,10 @@ bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv:
      */
     g_marker_pose_in.header = request.path.poses[0].header;
     g_marker_pose_in.pose=request.path.poses[0].pose;
+    g_marker_pose_in.header.stamp=ros::Time::now();
     g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
-    
+    ROS_INFO("Transformation Went Through...");
+
     g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
     g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
     g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
@@ -170,7 +172,7 @@ void stuff_trajectory( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_tr
 //command robot to move to "qvec" using a trajectory message, sent via ROS-I
 void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_trajectory, int nsolns) {
     
-    trajectory_msgs::JointTrajectoryPoint trajectory_point_h;
+    //trajectory_msgs::JointTrajectoryPoint trajectory_point_h;
     trajectory_msgs::JointTrajectoryPoint trajectory_point_g;
     trajectory_msgs::JointTrajectoryPoint trajectory_point_t;
     trajectory_msgs::JointTrajectoryPoint trajectory_point_c;
@@ -191,14 +193,15 @@ void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory
     
     trajectory_point_c.positions.clear();    
     trajectory_point_t.positions.clear(); 
-    trajectory_point_h.positions.clear();
+    //trajectory_point_h.positions.clear();
     trajectory_point_g.positions.clear();
     //fill in the points of the trajectory: initially, all home angles
     for (int ijnt=0;ijnt<6;ijnt++) {
         trajectory_point_c.positions.push_back(g_q_state[ijnt]); // stuff in position commands for 6 joints
         //should also fill in trajectory_point.time_from_start
-        trajectory_point_t.positions.push_back(home_state[ijnt]); // stuff in position commands for 6 joints   
+        trajectory_point_t.positions.push_back(trans_state[ijnt]); // stuff in position commands for 6 joints   
         //trajectory_point2.positions[ijnt] = qvec[ijnt]; //put in final position command
+	trajectory_point_g.positions.push_back(qvec[ijnt]);
     }
     trajectory_point_c.time_from_start =    ros::Duration(0);  
     trajectory_point_t.time_from_start =    ros::Duration(2.0);      
@@ -208,16 +211,8 @@ void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory
     new_trajectory.points.push_back(trajectory_point_t); // quick hack--return to home pose
     
     // fill in the target pose: really should fill in a sequence of poses leading to this goal
-   trajectory_point_g.time_from_start =    ros::Duration(4.0); 
-   //for (int i = 0; i < nsolns; i++) {
-       //qvec = all_qvec[i];
-       //ROS_WARN("nsoln = %d", i);
-         for (int ijnt=0;ijnt<6;ijnt++) {
-                trajectory_point_g.positions[ijnt] = qvec[ijnt];
-                ROS_WARN("qvec[%d] = %f", ijnt, qvec[ijnt]);
-         //} 
-   }
-
+   trajectory_point_g.time_from_start =    ros::Duration(18.0); 
+	trajectory_point_t.time_from_start =    ros::Duration(30.0); 
     new_trajectory.points.push_back(trajectory_point_g); // append this point to trajectory
     new_trajectory.points.push_back(trajectory_point_t);
 }
@@ -368,6 +363,7 @@ int main(int argc, char** argv) {
                     qvec = q6dof_solns[soln]; // arbitrarily choose first soln                    
                     // stuff_trajectory(qvec,new_trajectory); 
                     stuff_trajectory_epsilon(qvec, new_trajectory, nsolns);
+ROS_WARN("Done For Loop");
                         pub.publish(new_trajectory);
                 }
             }
