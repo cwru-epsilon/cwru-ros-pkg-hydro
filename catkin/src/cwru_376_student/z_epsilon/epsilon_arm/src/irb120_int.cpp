@@ -375,7 +375,7 @@ int main(int argc, char** argv) {
                 begin=false;
                 trajectory_msgs::JointTrajectoryPoint trajectory_point_h;
                 trajectory_msgs::JointTrajectoryPoint trajectory_point_c;
-                
+                ROS_WARN("First Time...");
                 new_trajectory.points.clear();
                 new_trajectory.joint_names.clear();
                 new_trajectory.joint_names.push_back("joint_1");
