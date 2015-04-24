@@ -731,6 +731,66 @@ int main(int argc, char** argv) {
                     goalCenter.pose.orientation.y = 0;
                     goalCenter.pose.orientation.z = sqrt(2)/2;
                     goalCenter.pose.orientation.w = -sqrt(2)/2;
+
+    //x: 4.23001651484e-08 ~= 0
+    //y: 0.710395395756 ~= 0.707
+    //z: -1.52111045981e-10 ~= 0
+    //w: 0.70380294323 ~= 0.707
+//FROM ABOVE
+//pose: 
+//  position: 
+//    x: 1.18128025532
+//    y: 9.31322574615e-10
+//    z: 0.859241485596
+//  orientation: 
+//    x: 4.23001651484e-08
+//    y: 0.710395395756
+//    z: -1.52111045981e-10
+//    w: 0.70380294323
+//menu_entry_id: 0
+//mouse_point: 
+//  x: 1.19935595989
+//  y: -0.0120627880096
+//  z: 1.00734519958
+
+//FROM THE RIGHT SIDE 
+//pose: 
+//  position: 
+//    x: 1.18031895161
+//    y: -0.141054272652
+//    z: 0.756130516529
+//  orientation: 
+//    x: 0.499641001225
+//    y: 0.504995763302
+//    z: 0.495004057884
+//    w: 0.500309288502
+//menu_entry_id: 0
+//mouse_point: 
+//  x: 1.16623771191
+//  y: -0.135383188725
+//  z: 0.912454724312
+
+//OR SIDE FRONT
+//pose: 
+//  position: 
+//    x: 1.05251729488
+//    y: 0.0108887311071
+//    z: 0.756275355816
+//  orientation: 
+//    x: 0.0309091433883
+//    y: 0.00163767114282
+//    z: -0.0717939734459
+//    w: 0.996939361095
+//menu_entry_id: 0
+//mouse_point: 
+//  x: 1.05443966389
+//  y: -0.0221655368805
+//  z: 0.89943087101
+
+
+//SUB to GET SIDE Value addition to original center
+
+
                     path_message.request.path.poses.push_back(goalCenter);
                     if (client.call(path_message)) {
                         ROS_INFO("got ack from server");
