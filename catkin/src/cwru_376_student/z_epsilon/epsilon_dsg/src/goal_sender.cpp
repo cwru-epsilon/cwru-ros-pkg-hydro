@@ -70,6 +70,19 @@ int main(int argc, char **argv) {
     vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
+//GOAL using ODOM
+//pose: 
+//  pose: 
+//    position: 
+//      x: 0.0257328022271
+//      y: -0.00380270276219
+//      z: 0.0
+//    orientation: 
+//      x: -0.0
+//      y: -0.0
+//      z: -0.0523227277251
+//      w: 0.998630227944
+
     //Home Pose (Home): 
     //x=-3.31683585831;
     //y=20.6154034727;
