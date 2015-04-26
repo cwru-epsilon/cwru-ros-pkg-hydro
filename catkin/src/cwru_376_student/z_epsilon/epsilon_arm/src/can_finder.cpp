@@ -726,11 +726,11 @@ int main(int argc, char** argv) {
                     cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
                     goalCenter.pose.position.x = g_cylinder_origin[0];
                     goalCenter.pose.position.y = g_cylinder_origin[1];
-                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.2;//+0.8;
-                    goalCenter.pose.orientation.x = 0;
-                    goalCenter.pose.orientation.y = 0;
-                    goalCenter.pose.orientation.z = sqrt(2)/2;
-                    goalCenter.pose.orientation.w = -sqrt(2)/2;
+                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.2;//+0.8; // Just 20 cm away from the can or the length of the arm
+                    goalCenter.pose.orientation.x = 0.0;
+                    goalCenter.pose.orientation.y = sqrt(2)/2;
+                    goalCenter.pose.orientation.z = 0.0;
+                    goalCenter.pose.orientation.w = sqrt(2)/2;
 
     //x: 4.23001651484e-08 ~= 0
     //y: 0.710395395756 ~= 0.707
@@ -756,11 +756,11 @@ int main(int argc, char** argv) {
 //FROM THE RIGHT SIDE 
 //pose: 
 //  position: 
-//    x: 1.18031895161
-//    y: -0.141054272652
-//    z: 0.756130516529
+//    x: 1.18031895161          Ax -Rx = 0.00096130371
+//    y: -0.141054272652        Ay -Ry = 0.141054272652
+//    z: 0.756130516529         Az -Rz = 0.103110969
 //  orientation: 
-//    x: 0.499641001225
+//    x: 0.499641001225     Has to be the same here...
 //    y: 0.504995763302
 //    z: 0.495004057884
 //    w: 0.500309288502
@@ -773,9 +773,9 @@ int main(int argc, char** argv) {
 //OR SIDE FRONT
 //pose: 
 //  position: 
-//    x: 1.05251729488
-//    y: 0.0108887311071
-//    z: 0.756275355816
+//    x: 1.05251729488          Ax -Fx = 0.12876296
+//    y: 0.0108887311071        Ay -Fy = -0.0108887311071
+//    z: 0.756275355816         Az -Fz = 0.103110969
 //  orientation: 
 //    x: 0.0309091433883
 //    y: 0.00163767114282
