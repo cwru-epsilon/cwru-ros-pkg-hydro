@@ -21,6 +21,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 cs_add_executable(approach_table src/approach_table.cpp)
 cs_add_executable(leave_table src/leave_table.cpp)
 cs_add_executable(epsilon_steering src/epsilon_steering.cpp)
+cs_add_executable(epsilon_steering_odom src/epsilon_steering_odom.cpp)
 #cs_add_executable(example_steering_algorithm2 src/example_steering_algorithm_hidden.cpp)
 # target_link_library(example my_lib)
 
