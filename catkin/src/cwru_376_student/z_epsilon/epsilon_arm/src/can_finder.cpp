@@ -708,7 +708,7 @@ int main(int argc, char** argv) {
 			break;
 		    }
 		    else { // tolarances were figured out from by trials and error...
-			while((fabs(dEdCx) > 0.0000015 || fabs(dEdCy) > 7e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			while((fabs(dEdCx) > 5e-5 || fabs(dEdCy) > 7e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
 			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
                         can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
 
@@ -727,15 +727,20 @@ int main(int argc, char** argv) {
                     goalCenter.pose.position.x = g_cylinder_origin[0];
                     goalCenter.pose.position.y = g_cylinder_origin[1];
                     goalCenter.pose.position.z = g_cylinder_origin[2]+0.2;//+0.8; // Just 20 cm away from the can or the length of the arm
-                    goalCenter.pose.orientation.x = 0.0;
-                    goalCenter.pose.orientation.y = sqrt(2)/2;
-                    goalCenter.pose.orientation.z = 0.0;
-                    goalCenter.pose.orientation.w = sqrt(2)/2;
+                    goalCenter.pose.orientation.x = 0.376717746258;//0.0;
+                    goalCenter.pose.orientation.y = 0.596905112267;
+                    goalCenter.pose.orientation.z = -0.373646944761;
+                    goalCenter.pose.orientation.w = 0.601810872555;
 
     //x: 4.23001651484e-08 ~= 0
     //y: 0.710395395756 ~= 0.707
     //z: -1.52111045981e-10 ~= 0
     //w: 0.70380294323 ~= 0.707
+                    
+                    //0.376717746258
+                    //0.596905112267
+                    //-0.373646944761
+                    //0.601810872555
 //FROM ABOVE
 //pose: 
 //  position: 
