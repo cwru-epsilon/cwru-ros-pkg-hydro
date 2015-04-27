@@ -38,8 +38,8 @@ const double K_PHI= 10.0; // control gains for steering
 const double K_DISP = 3.0;
 const double K_TRIP_DIST = 1.0;
 // dynamic limitations:  these apply to the steering controller; they may be larger than the limits on des state generation
-const double MAX_SPEED = 0.8; // m/sec;
-const double MAX_OMEGA = 1.0; //1.0; // rad/sec;
+const double MAX_SPEED = 1.5; // m/sec;
+const double MAX_OMEGA = 1.8; //1.0; // rad/sec;
 
 
 // define a class, including a constructor, member variables and member functions

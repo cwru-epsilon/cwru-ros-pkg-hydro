@@ -26,6 +26,8 @@ cs_add_executable(home_sender src/home_sender.cpp)
 cs_add_executable(epsilon_dsg_odom src/epsilon_dsg_odom.cpp)
 cs_add_executable(goal_sender_odom src/goal_sender_odom.cpp)
 cs_add_executable(home_sender_odom src/home_sender_odom.cpp)
+cs_add_executable(dead_reck src/dead_reck.cpp)
+
 # target_link_library(example my_lib)
 
 cs_install()

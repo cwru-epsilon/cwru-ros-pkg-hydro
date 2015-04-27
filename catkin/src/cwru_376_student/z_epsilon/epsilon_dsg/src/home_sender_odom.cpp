@@ -59,21 +59,11 @@ int main(int argc, char **argv) {
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
     //vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
     
-    // fill in the interesting data: (x,y) and phi = location and heading THOSE ARE FROM ACTUAL AMCL MAP POINTS.....
-
-    //Goal Pose (Close to the table):
-    //x=5.14055403825;
-    //y=12.0505654959;
-    //phi=-0.924655161966;
-
-    //ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
-    //vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
-    //path_message.request.path.poses.push_back(vertex);
 
     //Home Pose (Home): 
-    x=-3.31683585831;
-    y=20.6154034727;
-    phi=0.926395175302;
+    x=-0.0633556395769;
+    y=-0.0474392510951;
+    phi=-0.998160704572;
 
     ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
     vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi

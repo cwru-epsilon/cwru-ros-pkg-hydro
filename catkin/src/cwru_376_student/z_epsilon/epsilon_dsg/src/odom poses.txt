@@ -1,0 +1,29 @@
+Goal Point
+
+pose: 
+  pose: 
+    position: 
+      x: 4.91229581833
+      y: 0.591153979301
+      z: 0.0
+    orientation: 
+      x: -0.0
+      y: -0.0
+      z: -0.0187622465068
+      w: 0.99982397356
+
+
+Home Back Point
+
+pose: 
+  pose: 
+    position: 
+      x: -0.0633556395769
+      y: -0.0474392510951
+      z: 0.0
+    orientation: 
+      x: -0.0
+      y: -0.0
+      z: -0.998160704572
+      w: -0.0606234925472
+

@@ -51,9 +51,9 @@ const int ARC = cwru_msgs::PathSegment::ARC;
 const int SPIN_IN_PLACE = cwru_msgs::PathSegment::SPIN_IN_PLACE;
 
 // dynamic limitations
-const double MAX_SPEED = 1.1; // m/sec;
+const double MAX_SPEED = 1.5; // m/sec;
 const double MAX_OMEGA = 1.8; //1.0; // rad/sec;
-const double MAX_ACCEL = 0.9; // m/sec^2;
+const double MAX_ACCEL = 1.0; // m/sec^2;
 const double MAX_ALPHA = 1.5; // rad/sec^2;
 
 const double LENGTH_TOL = 0.001; // tolerance for path; It was ADJUSTED to our needs for operation on GAZEBO

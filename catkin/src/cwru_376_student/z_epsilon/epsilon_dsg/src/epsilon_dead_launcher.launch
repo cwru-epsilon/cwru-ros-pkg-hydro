@@ -1,0 +1,11 @@
+<launch>
+	
+	
+	<node type="dead_reck" pkg="epsilon_dsg" name="dead_reck" output="screen"/>
+	
+	<node type="lidar_alarm" pkg="epsilon_dsg" name="lidar_alarm"/>
+	
+	<node type="estop_listener" pkg="epsilon_dsg" name="estop_listener"/>
+	
+
+</launch>

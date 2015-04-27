@@ -61,27 +61,15 @@ int main(int argc, char **argv) {
     // fill in the interesting data: (x,y) and phi = location and heading THOSE ARE FROM ACTUAL AMCL MAP POINTS.....
 
     //Goal Pose (Close to the table):
-    x=0.0257328022271;
-    y=-0.00380270276219;
-    phi=-0.0523227277251;
+    x=4.91229581833;
+    y=0.591153979301;
+    phi=-0.0187622465068;
 
     ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
     vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
     
-    //GOAL using ODOM
-//pose: 
-//  pose: 
-//    position: 
-//      x: 0.0257328022271
-//      y: -0.00380270276219
-//      z: 0.0
-//    orientation: 
-//      x: -0.0
-//      y: -0.0
-//      z: -0.0523227277251
-//      w: 0.998630227944
     
     
 
