@@ -49,9 +49,9 @@ therefore, theta = 2*atan2(qz,qw)
 
 
 // set some dynamic limits...
-const double v_max = 1.0; //1m/sec is a slow walk
+const double v_max = 0.6; //1m/sec is a slow walk
 const double v_min = 0.1; // if command velocity too low, robot won't move
-const double a_max = 0.9; //1m/sec^2 is 0.1 g's
+const double a_max = 1.3; //1m/sec^2 is 0.1 g's
 //const double a_max_decel = 0.1; // TEST
 const double DT = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
 
@@ -73,6 +73,7 @@ double odom_omega_ = 0.0; // measured/published system yaw rate (spin)
 double odom_x_ = 0.0;
 double odom_y_ = 0.0;
 double odom_phi_ = 0.0;
+double odom_twist_z = 0.0;
 double dt_odom_ = 0.0;
 ros::Time t_last_callback_;
 double dt_callback_=0.0;
@@ -218,7 +219,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len) {
             }
             //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
            //cmd_vel.linear.x = 0.0 
-            cmd_vel.angular.z = 0.0;
+            cmd_vel.angular.z = odom_twist_z*4;//*2;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
 	    //break;
@@ -259,6 +260,7 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 
     // the output below could get annoying; may comment this out, but useful initially for debugging
     ROS_INFO("odom CB: x = %f, y= %f, phi = %f, v = %f, omega = %f", odom_x_, odom_y_, odom_phi_, odom_vel_, odom_omega_);
+	odom_twist_z = odom_rcvd.twist.twist.angular.z;
 }
 
 // This Callback is for handling hard estop triggers (Hardware estops are handled in estop_listener_epsilon.cpp ..
@@ -316,7 +318,7 @@ int main(int argc, char **argv) {
     
     //masterLoop(nh, +0.5);
     //masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, -0.5);
+    masterLoop(nh, -4.8);
 
     ROS_INFO("completed move distance");
 }
