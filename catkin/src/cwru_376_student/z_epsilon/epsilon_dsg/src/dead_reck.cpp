@@ -51,8 +51,8 @@ const double v_max = 0.6; //1m/sec is a fast walk (we decided to make it 0.6 for
 //const double v_min = 0.1; // if command velocity too low, robot won't move
 const double a_max = 1.6; //1m/sec^2 is 0.1 g's (This value is just enough to command Jinx to move on top of the treadmill)
 
-const double omega_max = 1.8; //1 rad/sec-> about 6 seconds to rotate 1 full rev 
-const double alpha_max = 1.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega 
+const double omega_max = 2.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev 
+const double alpha_max = 3.0; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega 
 const double DT = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
 
 const std::string odomT = "/odom"; // /robot0/odom or /odom
@@ -417,8 +417,8 @@ int main(int argc, char **argv) {
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
 
     //masterLoop(nh, 5.5, false, 0.0);
-    //masterLoop(nh, 0.0, true, 0.20);
-    masterLoop(nh, 5.5, false, 0.0);
+    //masterLoop(nh, 0.0, true, -3.00);
+    masterLoop(nh, 3.0, false, 0.0);
     //masterLoop(nh, 0.0, true, -0.20);
     //masterLoop(nh, 4.5, false, 0.0);
 

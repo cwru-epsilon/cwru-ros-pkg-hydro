@@ -708,7 +708,7 @@ int main(int argc, char** argv) {
 			break;
 		    }
 		    else { // tolarances were figured out from by trials and error...
-			while((fabs(dEdCx) > 5e-5 || fabs(dEdCy) > 7e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
 			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
                         can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
 
