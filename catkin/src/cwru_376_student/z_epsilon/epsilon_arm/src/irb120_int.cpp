@@ -22,15 +22,15 @@
  #include <tf/transform_listener.h>
 
 //callback to subscribe to marker state
-Eigen::Vector3d g_p;
+Eigen::Vector3d g_p, g_p_above;
 Vectorq6x1 g_q_state;
 Vectorq6x1 home_state, trans_state; //= {0.0245981, -1.43767, 0.0514272, -0.13549, -0.363732, -0.0716817};
 
 double g_x,g_y,g_z;
 //geometry_msgs::Quaternion g_quat; // global var for quaternion
 Eigen::Quaterniond g_quat;
-Eigen::Matrix3d g_R;
-Eigen::Affine3d g_A_flange_desired;
+Eigen::Matrix3d g_R, g_R_above;
+Eigen::Affine3d g_A_flange_desired, g_A_flange_desired_a;
 bool g_trigger=false;
 
  
@@ -93,12 +93,15 @@ bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv:
     g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
     g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
     g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+    g_p_above[0] = g_p[0];
+    g_p_above[1] = g_p[1];
+    g_p_above[2] = g_p[2] + 0.2; //Here we added a transition trajectory 20 cm above the can
     g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
     g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
     g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
     g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;   
     g_R = g_quat.matrix();     
-    
+    g_R_above = g_R;
     response.resp = true; // boring, but valid response info
     return true;
 }
@@ -120,6 +123,10 @@ bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_
     // grab the most recent IM data and repackage it as an Affine3 matrix to set a target hand pose;
     g_A_flange_desired.translation() = g_p;
     g_A_flange_desired.linear() = g_R;
+    
+    g_A_flange_desired_a.translation() = g_p_above;
+    g_A_flange_desired_a.linear() = g_R_above;
+    
     cout<<"g_p: "<<g_p.transpose()<<endl;
     cout<<"R: "<<endl;
     cout<<g_R<<endl;
@@ -170,12 +177,14 @@ void stuff_trajectory( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_tr
 
 
 //command robot to move to "qvec" using a trajectory message, sent via ROS-I
-void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_trajectory, int nsolns) {
+void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_trajectory, 
+        int nsolns, Vectorq6x1 qvec_above, trajectory_msgs::JointTrajectory &back_trajectory) {
     
     //trajectory_msgs::JointTrajectoryPoint trajectory_point_h;
-    trajectory_msgs::JointTrajectoryPoint trajectory_point_g;
-    trajectory_msgs::JointTrajectoryPoint trajectory_point_t;
-    trajectory_msgs::JointTrajectoryPoint trajectory_point_c;
+    trajectory_msgs::JointTrajectoryPoint trajectory_point_g; //goal
+    trajectory_msgs::JointTrajectoryPoint trajectory_point_t; //transition
+    trajectory_msgs::JointTrajectoryPoint trajectory_point_c; //current
+    trajectory_msgs::JointTrajectoryPoint trajectory_point_a; //above can
     //Vectorq6x1 qvec; 
     //Vectorq6x1 home_state;
     
@@ -190,11 +199,22 @@ void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory
 
     new_trajectory.header.stamp = ros::Time::now(); 
     
+    back_trajectory.points.clear();
+    back_trajectory.joint_names.clear();
+    back_trajectory.joint_names.push_back("joint_1");
+    back_trajectory.joint_names.push_back("joint_2");
+    back_trajectory.joint_names.push_back("joint_3");
+    back_trajectory.joint_names.push_back("joint_4");
+    back_trajectory.joint_names.push_back("joint_5");
+    back_trajectory.joint_names.push_back("joint_6");   
+
+    back_trajectory.header.stamp = ros::Time::now(); 
     
     trajectory_point_c.positions.clear();    
     trajectory_point_t.positions.clear(); 
     //trajectory_point_h.positions.clear();
     trajectory_point_g.positions.clear();
+    trajectory_point_a.positions.clear();
     //fill in the points of the trajectory: initially, all home angles
     for (int ijnt=0;ijnt<6;ijnt++) {
         trajectory_point_c.positions.push_back(g_q_state[ijnt]); // stuff in position commands for 6 joints
@@ -202,19 +222,26 @@ void stuff_trajectory_epsilon( Vectorq6x1 qvec, trajectory_msgs::JointTrajectory
         trajectory_point_t.positions.push_back(trans_state[ijnt]); // stuff in position commands for 6 joints   
         //trajectory_point2.positions[ijnt] = qvec[ijnt]; //put in final position command
 	trajectory_point_g.positions.push_back(qvec[ijnt]);
+        trajectory_point_a.positions.push_back(qvec_above[ijnt]);
     }
     trajectory_point_c.time_from_start =    ros::Duration(0);  
     trajectory_point_t.time_from_start =    ros::Duration(2.0);      
+    trajectory_point_a.time_from_start =    ros::Duration(8.0);
 
     // start from home pose... really, should should start from current pose!
     new_trajectory.points.push_back(trajectory_point_c); // add this single trajectory point to the trajectory vector   
     new_trajectory.points.push_back(trajectory_point_t); // quick hack--return to home pose
-    
+    new_trajectory.points.push_back(trajectory_point_a); //The 
     // fill in the target pose: really should fill in a sequence of poses leading to this goal
-   trajectory_point_g.time_from_start =    ros::Duration(18.0); 
-	trajectory_point_t.time_from_start =    ros::Duration(30.0); 
+    trajectory_point_g.time_from_start =    ros::Duration(18.0); 
+    trajectory_point_t.time_from_start =    ros::Duration(30.0); 
     new_trajectory.points.push_back(trajectory_point_g); // append this point to trajectory
-    new_trajectory.points.push_back(trajectory_point_t);
+    //new_trajectory.points.push_back(trajectory_point_t);
+    trajectory_point_g.time_from_start =    ros::Duration(0);  
+    trajectory_point_t.time_from_start =    ros::Duration(2.0); 
+    back_trajectory.points.push_back(trajectory_point_g); //As if it is the current traj for this requested traj
+    back_trajectory.points.push_back(trajectory_point_t);
+    
 }
 
 
@@ -254,11 +281,11 @@ int main(int argc, char** argv) {
     
     Eigen::Vector3d p;
     Eigen::Vector3d n_des,t_des,b_des;
-    std::vector<Vectorq6x1> q6dof_solns;
-    Vectorq6x1 qvec;
+    std::vector<Vectorq6x1> q6dof_solns, q6dof_solns_a;
+    Vectorq6x1 qvec, qvec_above;
     ros::Rate sleep_timer(10.0); //10Hz update rate    
     Irb120_fwd_solver irb120_fwd_solver; //instantiate forward and IK solvers
-    Irb120_IK_solver ik_solver;
+    Irb120_IK_solver ik_solver, ik_solver_a;
     Eigen::Vector3d n_urdf_wrt_DH,t_urdf_wrt_DH,b_urdf_wrt_DH;
     bool begin = true;
     //Home For Abby Sim    
@@ -303,11 +330,11 @@ int main(int argc, char** argv) {
     R_urdf_wrt_DH.col(1) = t_urdf_wrt_DH;
     R_urdf_wrt_DH.col(2) = b_urdf_wrt_DH;    
 
-    trajectory_msgs::JointTrajectory new_trajectory; // an empty trajectory
+    trajectory_msgs::JointTrajectory new_trajectory, back_trajectory; // an empty trajectory
 
     
     //qvec<<0,0,0,0,0,0;
-    Eigen::Affine3d A_flange_des_DH;
+    Eigen::Affine3d A_flange_des_DH, A_flange_des_DH_a;
     
     //   A_fwd_DH = irb120_fwd_solver.fwd_kin_solve(qvec); //fwd_kin_solve
 
@@ -349,22 +376,30 @@ int main(int argc, char** argv) {
                 //is this point reachable?
                 A_flange_des_DH = g_A_flange_desired;
                 A_flange_des_DH.linear() = g_A_flange_desired.linear()*R_urdf_wrt_DH.transpose();
+                
+                A_flange_des_DH_a = g_A_flange_desired_a;
+                A_flange_des_DH_a.linear() = g_A_flange_desired_a.linear()*R_urdf_wrt_DH.transpose();
+                
                 cout<<"R des DH: "<<endl;
                 cout<<A_flange_des_DH.linear()<<endl;
                 nsolns = ik_solver.ik_solve(A_flange_des_DH);
                 ROS_INFO("there are %d solutions",nsolns);
 
                 if (nsolns>0) {      
-                    ik_solver.get_solns(q6dof_solns);  
+                    ik_solver.get_solns(q6dof_solns);
+                    ik_solver_a.get_solns(q6dof_solns_a);
                     //qvec = checkSolns(q6dof_solns, nsolns);
                     int soln = checkSolns(q6dof_solns, nsolns);
                     ROS_WARN("Chosen Solution = %d", soln);
                     //ROS_WARN("qvec[%d] = %f", ijnt, qvec[ijnt]);
-                    qvec = q6dof_solns[soln]; // arbitrarily choose first soln                    
+                    qvec = q6dof_solns[soln]; // choose the best solution
+                    qvec_above = q6dof_solns_a[0];
                     // stuff_trajectory(qvec,new_trajectory); 
-                    stuff_trajectory_epsilon(qvec, new_trajectory, nsolns);
-ROS_WARN("Done For Loop");
-                        pub.publish(new_trajectory);
+                    stuff_trajectory_epsilon(qvec, new_trajectory, nsolns, qvec_above, back_trajectory);
+                    ROS_WARN("Done For Loop");
+                    pub.publish(new_trajectory);
+                    ros::Duration(40.0).sleep();
+                    pub.publish(back_trajectory);
                 }
             }
             if (begin) {
