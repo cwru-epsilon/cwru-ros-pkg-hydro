@@ -47,9 +47,9 @@ therefore, theta = 2*atan2(qz,qw)
 #include <string>
 
 // set some dynamic limits...
-const double v_max = 2.0; //1m/sec is a fast walk (we decided to make it 0.6 for actual demo on Jinx)
+const double v_max = 0.6; //1m/sec is a fast walk (we decided to make it 0.6 for actual demo on Jinx)
 //const double v_min = 0.1; // if command velocity too low, robot won't move
-const double a_max = 1.8; //1m/sec^2 is 0.1 g's (This value is just enough to command Jinx to move on top of the treadmill)
+const double a_max = 1.6; //1m/sec^2 is 0.1 g's (This value is just enough to command Jinx to move on top of the treadmill)
 
 const double omega_max = 1.8; //1 rad/sec-> about 6 seconds to rotate 1 full rev 
 const double alpha_max = 1.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega 
@@ -70,7 +70,7 @@ double odom_twist_z = 0.0; //to adjust robot drift.
 ros::Time t_last_callback_;
 double dt_callback_=0.00;
 
-const double MIN_SAFE_DISTANCE = 0.3; //in meters for Lidar
+const double MIN_SAFE_DISTANCE = 0.55; //in meters for Lidar
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
@@ -254,7 +254,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
         print_soft = true;
         print_hard = true;
         print_lidar = true;
-        cmd_vel.angular.z = -odom_twist_z*6; // to adjust robot drift..$
+        cmd_vel.angular.z = -odom_twist_z*7; // to adjust robot drift..$
         vel_cmd_publisher.publish(cmd_vel); // publish the command to /cmd_vel in Jinx 
         
         rtimer.sleep(); // sleep for remainder of timed iteration
@@ -418,7 +418,7 @@ int main(int argc, char **argv) {
 
     //masterLoop(nh, 5.5, false, 0.0);
     //masterLoop(nh, 0.0, true, 0.20);
-    masterLoop(nh, 4.8, false, 0.0);
+    masterLoop(nh, 5.5, false, 0.0);
     //masterLoop(nh, 0.0, true, -0.20);
     //masterLoop(nh, 4.5, false, 0.0);
 

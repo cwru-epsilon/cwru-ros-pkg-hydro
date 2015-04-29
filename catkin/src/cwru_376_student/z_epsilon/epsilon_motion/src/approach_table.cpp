@@ -58,7 +58,7 @@ const double DT = 0.050; // choose an update rate of 20Hz; go faster with actual
 const std::string odomT = "/odom"; // /robot0/odom or /odom
 const std::string cmd_velT = "/cmd_vel"; // robot0/cmd_vel or /cmd_vel
 
-const double MIN_SAFE_DISTANCE = 0.27; //in meters for Lidar
+const double MIN_SAFE_DISTANCE = 0.38; //in meters for Lidar
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
