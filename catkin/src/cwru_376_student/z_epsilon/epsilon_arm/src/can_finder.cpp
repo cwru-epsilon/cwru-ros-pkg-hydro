@@ -729,7 +729,7 @@ int main(int argc, char** argv) {
                     cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
                     goalCenter.pose.position.x = g_cylinder_origin[0];
                     goalCenter.pose.position.y = g_cylinder_origin[1];
-                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.05;//+0.8; // Just 5 cm away from the can or the length of the arm
+                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.17;//+0.8; // Just 17 cm away from the can or the length of the gripper
                     // To point tool flange downwards
                     goalCenter.pose.orientation.x = 0.376717746258;//
                     goalCenter.pose.orientation.y = 0.596905112267;

@@ -459,7 +459,7 @@ int main(int argc, char** argv) {
                     stuff_trajectory_epsilon(qvec, new_trajectory, nsolns, qvec_above);
                     
                     pub.publish(new_trajectory);
-                    ros::Duration(80.0).sleep();
+                    ros::Duration(90.0).sleep();
 		    ros::spinOnce();
 		    stuff_trajectory_epsilon_back(back_trajectory, nsolns);
                     pub.publish(back_trajectory);
