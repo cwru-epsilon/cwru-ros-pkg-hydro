@@ -77,10 +77,10 @@ const int FIND_PNTS_ABOVE_PLANE = 1;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 2;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 3;
 //const int MAKE_CAN_CLOUD = 4;
-const int FIND_ON_TABLE_A = 5;
-const int FIND_ON_TABLE_F = 6;
-const int FIND_ON_TABLE_R = 7;
-const int FIND_ON_TABLE_L = 8;
+const int FIND_ON_TABLE_A = 5; // Find from Patch 
+const int FIND_ON_TABLE_F = 6; // Find From Patch Front
+const int FIND_ON_TABLE_R = 7; // Find From Patch RIGHT
+const int FIND_ON_TABLE_L = 8; // Find From Patch Left
 
 const double Z_EPS = 0.01; //choose a tolerance for plane fitting, e.g. 1cm
 const double R_EPS = 0.05; // choose a tolerance for cylinder-fit outliers
@@ -668,7 +668,7 @@ int main(int argc, char** argv) {
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
                   
                     break;
-                    
+     // Normal CASE *******************************
                 case FIND_ON_TABLE_A:
                     ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
                     //really, this is steps 0,1,2 and 3, above
@@ -738,69 +738,84 @@ int main(int argc, char** argv) {
                     goalCenter.pose.orientation.z = -0.373646944761;
                     goalCenter.pose.orientation.w = 0.601810872555;
 
-    //x: 4.23001651484e-08 ~= 0
-    //y: 0.710395395756 ~= 0.707
-    //z: -1.52111045981e-10 ~= 0
-    //w: 0.70380294323 ~= 0.707
-                    
-                    //0.376717746258
-                    //0.596905112267
-                    //-0.373646944761
-                    //0.601810872555
-//FROM ABOVE
-//pose: 
-//  position: 
-//    x: 1.18128025532
-//    y: 9.31322574615e-10
-//    z: 0.859241485596
-//  orientation: 
-//    x: 4.23001651484e-08
-//    y: 0.710395395756
-//    z: -1.52111045981e-10
-//    w: 0.70380294323
-//menu_entry_id: 0
-//mouse_point: 
-//  x: 1.19935595989
-//  y: -0.0120627880096
-//  z: 1.00734519958
+                    path_message.request.path.poses.push_back(goalCenter);
+                    if (client.call(path_message)) {
+                        ROS_INFO("got ack from server");
+                    } 
+                    else {
+                        ROS_ERROR("Failed to call service lookup_by_name");
+                        //return 1;
+                    }
+                    break;
+    // PATCH FROM FRONT *****************************************                
+                case FIND_ON_TABLE_F:
+                    ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
+                    //really, this is steps 0,1,2 and 3, above
+		    ROS_INFO("MODE 0: identifying plane based on patch selection...");
+                    find_plane(g_plane_params, g_indices_of_plane); // results in g_display_cloud (in orig frame), as well as 
+                    //g_cloud_transformed (rotated version of original cloud); g_indices_of_plane indicate points on the plane
+			ros::Duration(2.0).sleep();
+		    ROS_INFO("filtering for points above identified plane");
+                    // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
+                    z_threshold = 0.0-Z_EPS; //g_plane_params[3] + Z_EPS;//
+                    ROS_INFO("filtering for points above %f ", z_threshold);
+                    filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
+                    //extract these points--but in original, non-rotated frame; useful for display
+                    copy_cloud(g_cloud_from_disk, indices_pts_above_plane, g_display_cloud);
+			ros::Duration(2.0).sleep();
+	 	    ROS_INFO("creating a can cloud");
+                    make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
+                    // rough guess--estimate coords of cylinder from  centroid of most recent patch       
+                    for (int i=0;i<3;i++) {
+                        if (i<2) g_cylinder_origin[i] = g_patch_centroid[i] + MXY; // Meaning Modify X and Y ONLY
+                        else  g_cylinder_origin[i] = g_patch_centroid[i]; // Meaning Z the same as Patch Centroid..
+                    }
+                    // fix the z-height, based on plane height:
+                    g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
+		    g_cylinder_origin[2] = g_cylinder_origin[2] + H_CYLINDER + Z_EPS;
+                    //g_cylinder_origin is now the initial guess for the origin of the cylinder, expressed in sensor coords
+                    // now, cast this into the rotated coordinate frame:
+                    can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin;
+                    cout<<"initial guess for cylinder fit: "<<endl;
+                    cout<<" attempting fit at c = "<<can_center_wrt_plane.transpose()<<endl;                
+                    compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+                    cout<<"R_xform: "<<g_R_transform<<endl;
+                    A_plane_to_sensor.linear() = g_R_transform;
+                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(2.0).sleep();
+                    cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
+                       // try to do something smart.  can try using dEdCy and dEdCx
+                    if (dEdCx != dEdCx || dEdCy != dEdCy) { //A simple check if the values were equal to (nan)
+			ROS_WARN("The patch selection was not close enough for the can model to fit in the actual can.");
+			break;
+		    }
+		    else { // tolarances were figured out from by trials and error...
+			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
 
-//FROM THE RIGHT SIDE 
-//pose: 
-//  position: 
-//    x: 1.18031895161          Ax -Rx = 0.00096130371
-//    y: -0.141054272652        Ay -Ry = 0.141054272652
-//    z: 0.756130516529         Az -Rz = 0.103110969
-//  orientation: 
-//    x: 0.499641001225     Has to be the same here...
-//    y: 0.504995763302
-//    z: 0.495004057884
-//    w: 0.500309288502
-//menu_entry_id: 0
-//mouse_point: 
-//  x: 1.16623771191
-//  y: -0.135383188725
-//  z: 0.912454724312
+                    	ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
+                    	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
 
-//OR SIDE FRONT
-//pose: 
-//  position: 
-//    x: 1.05251729488          Ax -Fx = 0.12876296
-//    y: 0.0108887311071        Ay -Fy = -0.0108887311071
-//    z: 0.756275355816         Az -Fz = 0.103110969
-//  orientation: 
-//    x: 0.0309091433883
-//    y: 0.00163767114282
-//    z: -0.0717939734459
-//    w: 0.996939361095
-//menu_entry_id: 0
-//mouse_point: 
-//  x: 1.05443966389
-//  y: -0.0221655368805
-//  z: 0.89943087101
-
-
-//SUB to GET SIDE Value addition to original center
-
+                        g_cylinder_origin= g_A_plane*can_center_wrt_plane; 
+                        A_plane_to_sensor.translation() = g_cylinder_origin;
+                        transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(0.5).sleep();
+			}
+		    }
+		    // Now we have the fixed g_cylinder_origin. it points to the top of that object so send this in a specific topic. Like interactive marker.....
+                    cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
+                    goalCenter.pose.position.x = g_cylinder_origin[0];
+                    goalCenter.pose.position.y = g_cylinder_origin[1];
+                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.17;//+0.8; // Just 17 cm away from the can or the length of the gripper
+                    // To point tool flange downwards
+                    goalCenter.pose.orientation.x = 0.376717746258;//
+                    goalCenter.pose.orientation.y = 0.596905112267;
+                    goalCenter.pose.orientation.z = -0.373646944761;
+                    goalCenter.pose.orientation.w = 0.601810872555;
 
                     path_message.request.path.poses.push_back(goalCenter);
                     if (client.call(path_message)) {
@@ -811,6 +826,165 @@ int main(int argc, char** argv) {
                         //return 1;
                     }
                     break;
+        // PATCH FROM RIGHT **************************            
+                case FIND_ON_TABLE_R:
+                    ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
+                    //really, this is steps 0,1,2 and 3, above
+		    ROS_INFO("MODE 0: identifying plane based on patch selection...");
+                    find_plane(g_plane_params, g_indices_of_plane); // results in g_display_cloud (in orig frame), as well as 
+                    //g_cloud_transformed (rotated version of original cloud); g_indices_of_plane indicate points on the plane
+			ros::Duration(2.0).sleep();
+		    ROS_INFO("filtering for points above identified plane");
+                    // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
+                    z_threshold = 0.0-Z_EPS; //g_plane_params[3] + Z_EPS;//
+                    ROS_INFO("filtering for points above %f ", z_threshold);
+                    filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
+                    //extract these points--but in original, non-rotated frame; useful for display
+                    copy_cloud(g_cloud_from_disk, indices_pts_above_plane, g_display_cloud);
+			ros::Duration(2.0).sleep();
+	 	    ROS_INFO("creating a can cloud");
+                    make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
+                    // rough guess--estimate coords of cylinder from  centroid of most recent patch       
+                    for (int i=0;i<3;i++) {
+                        if (i<2) g_cylinder_origin[i] = g_patch_centroid[i] + MXY; // Meaning Modify X and Y ONLY
+                        else  g_cylinder_origin[i] = g_patch_centroid[i]; // Meaning Z the same as Patch Centroid..
+                    }
+                    // fix the z-height, based on plane height:
+                    g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
+		    g_cylinder_origin[2] = g_cylinder_origin[2] + H_CYLINDER + Z_EPS;
+                    //g_cylinder_origin is now the initial guess for the origin of the cylinder, expressed in sensor coords
+                    // now, cast this into the rotated coordinate frame:
+                    can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin;
+                    cout<<"initial guess for cylinder fit: "<<endl;
+                    cout<<" attempting fit at c = "<<can_center_wrt_plane.transpose()<<endl;                
+                    compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+                    cout<<"R_xform: "<<g_R_transform<<endl;
+                    A_plane_to_sensor.linear() = g_R_transform;
+                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(2.0).sleep();
+                    cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
+                       // try to do something smart.  can try using dEdCy and dEdCx
+                    if (dEdCx != dEdCx || dEdCy != dEdCy) { //A simple check if the values were equal to (nan)
+			ROS_WARN("The patch selection was not close enough for the can model to fit in the actual can.");
+			break;
+		    }
+		    else { // tolarances were figured out from by trials and error...
+			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
+
+                    	ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
+                    	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+
+                        g_cylinder_origin= g_A_plane*can_center_wrt_plane; 
+                        A_plane_to_sensor.translation() = g_cylinder_origin;
+                        transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(0.5).sleep();
+			}
+		    }
+		    // Now we have the fixed g_cylinder_origin. it points to the top of that object so send this in a specific topic. Like interactive marker.....
+                    cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
+                    goalCenter.pose.position.x = g_cylinder_origin[0];
+                    goalCenter.pose.position.y = g_cylinder_origin[1];
+                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.17;//+0.8; // Just 17 cm away from the can or the length of the gripper
+                    // To point tool flange downwards
+                    goalCenter.pose.orientation.x = 0.376717746258;//
+                    goalCenter.pose.orientation.y = 0.596905112267;
+                    goalCenter.pose.orientation.z = -0.373646944761;
+                    goalCenter.pose.orientation.w = 0.601810872555;
+
+                    path_message.request.path.poses.push_back(goalCenter);
+                    if (client.call(path_message)) {
+                        ROS_INFO("got ack from server");
+                    } 
+                    else {
+                        ROS_ERROR("Failed to call service lookup_by_name");
+                        //return 1;
+                    }
+                    break;
+
+        // PATCH FROM LEFT **************************            
+                case FIND_ON_TABLE_L:
+                    ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
+                    //really, this is steps 0,1,2 and 3, above
+		    ROS_INFO("MODE 0: identifying plane based on patch selection...");
+                    find_plane(g_plane_params, g_indices_of_plane); // results in g_display_cloud (in orig frame), as well as 
+                    //g_cloud_transformed (rotated version of original cloud); g_indices_of_plane indicate points on the plane
+			ros::Duration(2.0).sleep();
+		    ROS_INFO("filtering for points above identified plane");
+                    // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
+                    z_threshold = 0.0-Z_EPS; //g_plane_params[3] + Z_EPS;//
+                    ROS_INFO("filtering for points above %f ", z_threshold);
+                    filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
+                    //extract these points--but in original, non-rotated frame; useful for display
+                    copy_cloud(g_cloud_from_disk, indices_pts_above_plane, g_display_cloud);
+			ros::Duration(2.0).sleep();
+	 	    ROS_INFO("creating a can cloud");
+                    make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
+                    // rough guess--estimate coords of cylinder from  centroid of most recent patch       
+                    for (int i=0;i<3;i++) {
+                        if (i<2) g_cylinder_origin[i] = g_patch_centroid[i] + MXY; // Meaning Modify X and Y ONLY
+                        else  g_cylinder_origin[i] = g_patch_centroid[i]; // Meaning Z the same as Patch Centroid..
+                    }
+                    // fix the z-height, based on plane height:
+                    g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
+		    g_cylinder_origin[2] = g_cylinder_origin[2] + H_CYLINDER + Z_EPS;
+                    //g_cylinder_origin is now the initial guess for the origin of the cylinder, expressed in sensor coords
+                    // now, cast this into the rotated coordinate frame:
+                    can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin;
+                    cout<<"initial guess for cylinder fit: "<<endl;
+                    cout<<" attempting fit at c = "<<can_center_wrt_plane.transpose()<<endl;                
+                    compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+                    cout<<"R_xform: "<<g_R_transform<<endl;
+                    A_plane_to_sensor.linear() = g_R_transform;
+                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(2.0).sleep();
+                    cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
+                       // try to do something smart.  can try using dEdCy and dEdCx
+                    if (dEdCx != dEdCx || dEdCy != dEdCy) { //A simple check if the values were equal to (nan)
+			ROS_WARN("The patch selection was not close enough for the can model to fit in the actual can.");
+			break;
+		    }
+		    else { // tolarances were figured out from by trials and error...
+			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
+
+                    	ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
+                    	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
+
+                        g_cylinder_origin= g_A_plane*can_center_wrt_plane; 
+                        A_plane_to_sensor.translation() = g_cylinder_origin;
+                        transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+			ros::Duration(0.5).sleep();
+			}
+		    }
+		    // Now we have the fixed g_cylinder_origin. it points to the top of that object so send this in a specific topic. Like interactive marker.....
+                    cout<<"Cylinder Origin g_cylinder_origin = "<<g_cylinder_origin.transpose()<<endl;
+                    goalCenter.pose.position.x = g_cylinder_origin[0];
+                    goalCenter.pose.position.y = g_cylinder_origin[1];
+                    goalCenter.pose.position.z = g_cylinder_origin[2]+0.17;//+0.8; // Just 17 cm away from the can or the length of the gripper
+                    // To point tool flange downwards
+                    goalCenter.pose.orientation.x = 0.376717746258;//
+                    goalCenter.pose.orientation.y = 0.596905112267;
+                    goalCenter.pose.orientation.z = -0.373646944761;
+                    goalCenter.pose.orientation.w = 0.601810872555;
+
+                    path_message.request.path.poses.push_back(goalCenter);
+                    if (client.call(path_message)) {
+                        ROS_INFO("got ack from server");
+                    } 
+                    else {
+                        ROS_ERROR("Failed to call service lookup_by_name");
+                        //return 1;
+                    }
+                    break;                    
                 default:
                     ROS_WARN("this mode is not implemented");
 

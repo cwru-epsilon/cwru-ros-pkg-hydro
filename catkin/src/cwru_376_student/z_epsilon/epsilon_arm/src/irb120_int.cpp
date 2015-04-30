@@ -65,6 +65,7 @@ void markerListenerCB(
     g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
     g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
     g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+    ROS_WARN("g_p[0] = %f   g_p[1] = %f    g_p[2] = %f", g_p[0], g_p[1], g_p[2]);
     g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
     g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
     g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
@@ -111,6 +112,70 @@ bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv:
     g_R_above = g_R;
     response.resp = true; // boring, but valid response info
     return true;
+    
+        //x: 4.23001651484e-08 ~= 0
+    //y: 0.710395395756 ~= 0.707
+    //z: -1.52111045981e-10 ~= 0
+    //w: 0.70380294323 ~= 0.707
+                    
+                    //0.376717746258
+                    //0.596905112267
+                    //-0.373646944761
+                    //0.601810872555
+//FROM ABOVE
+//pose: 
+//  position: 
+//    x: 1.18128025532
+//    y: 9.31322574615e-10
+//    z: 0.859241485596
+//  orientation: 
+//    x: 4.23001651484e-08
+//    y: 0.710395395756
+//    z: -1.52111045981e-10
+//    w: 0.70380294323
+//menu_entry_id: 0
+//mouse_point: 
+//  x: 1.19935595989
+//  y: -0.0120627880096
+//  z: 1.00734519958
+
+//FROM THE RIGHT SIDE 
+//pose: 
+//  position: 
+//    x: 1.18031895161          Ax -Rx = 0.00096130371
+//    y: -0.141054272652        Ay -Ry = 0.141054272652
+//    z: 0.756130516529         Az -Rz = 0.103110969
+//  orientation: 
+//    x: 0.499641001225     Has to be the same here...
+//    y: 0.504995763302
+//    z: 0.495004057884
+//    w: 0.500309288502
+//menu_entry_id: 0
+//mouse_point: 
+//  x: 1.16623771191
+//  y: -0.135383188725
+//  z: 0.912454724312
+
+//OR SIDE FRONT
+//pose: 
+//  position: 
+//    x: 1.05251729488          Ax -Fx = 0.12876296
+//    y: 0.0108887311071        Ay -Fy = -0.0108887311071
+//    z: 0.756275355816         Az -Fz = 0.103110969
+//  orientation: 
+//    x: 0.0309091433883
+//    y: 0.00163767114282
+//    z: -0.0717939734459
+//    w: 0.996939361095
+//menu_entry_id: 0
+//mouse_point: 
+//  x: 1.05443966389
+//  y: -0.0221655368805
+//  z: 0.89943087101
+
+
+//SUB to GET SIDE Value addition to original center
+
 }
 
 void jointStateCB(
