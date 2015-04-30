@@ -88,6 +88,7 @@ const double R_EPS = 0.05; // choose a tolerance for cylinder-fit outliers
 const double R_CYLINDER = 0.0325; //estimated from ruler tool...example to fit a cyclinder of this radius to data
 const double H_CYLINDER = 0.12; // estimated height of cylinder
 const double AVG_POINT_DIST =  0.005715;
+const double MXY = 0.0; // This has to be MEASURED.&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& Using Interactive Marker
 Eigen::Vector3f g_cylinder_origin; // origin of model for cylinder registration
 
 int g_pcl_process_mode = 0; // mode--set by service
@@ -685,9 +686,10 @@ int main(int argc, char** argv) {
 			ros::Duration(2.0).sleep();
 	 	    ROS_INFO("creating a can cloud");
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
-                    // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
+                    // rough guess--estimate coords of cylinder from  centroid of most recent patch       
                     for (int i=0;i<3;i++) {
-                        g_cylinder_origin[i] = g_patch_centroid[i]; // DO BETTER THAN THIS
+                        if (i<2) g_cylinder_origin[i] = g_patch_centroid[i] + MXY; // Meaning Modify X and Y ONLY
+                        else  g_cylinder_origin[i] = g_patch_centroid[i]; // Meaning Z the same as Patch Centroid..
                     }
                     // fix the z-height, based on plane height:
                     g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
@@ -719,9 +721,9 @@ int main(int argc, char** argv) {
                     	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
                     cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
 
-                    g_cylinder_origin= g_A_plane*can_center_wrt_plane; 
-                    A_plane_to_sensor.translation() = g_cylinder_origin;
-                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+                        g_cylinder_origin= g_A_plane*can_center_wrt_plane; 
+                        A_plane_to_sensor.translation() = g_cylinder_origin;
+                        transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
 			ros::Duration(0.5).sleep();
 			}
 		    }
