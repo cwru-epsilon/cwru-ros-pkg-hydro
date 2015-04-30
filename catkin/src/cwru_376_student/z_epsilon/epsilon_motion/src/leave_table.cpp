@@ -51,14 +51,14 @@ therefore, theta = 2*atan2(qz,qw)
 // set some dynamic limits...
 const double v_max = 0.6; //1m/sec is a slow walk
 const double v_min = 0.1; // if command velocity too low, robot won't move
-const double a_max = 1.3; //1m/sec^2 is 0.1 g's
+const double a_max = 1.6; //1m/sec^2 is 0.1 g's
 //const double a_max_decel = 0.1; // TEST
 const double DT = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
 
 const std::string odomT = "/odom"; // /robot0/odom or /odom
 const std::string cmd_velT = "/cmd_vel"; // robot0/cmd_vel or /cmd_vel
 
-const double MIN_SAFE_DISTANCE = 0.27; //in meters for Lidar
+const double MIN_SAFE_DISTANCE = 0.3; //in meters for Lidar
 bool pause_soft = false;
 bool pause_hard = false;
 bool pause_lidar = false;
@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
     
     //masterLoop(nh, +0.5);
     //masterLoop(nh, 0.0, true, -1.57);
-    masterLoop(nh, -4.8);
+    masterLoop(nh, -0.5);
 
     ROS_INFO("completed move distance");
 }
