@@ -77,7 +77,10 @@ const int FIND_PNTS_ABOVE_PLANE = 1;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 2;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 3;
 //const int MAKE_CAN_CLOUD = 4;
-const int FIND_ON_TABLE = 5;
+const int FIND_ON_TABLE_A = 5;
+const int FIND_ON_TABLE_F = 6;
+const int FIND_ON_TABLE_R = 7;
+const int FIND_ON_TABLE_L = 8;
 
 const double Z_EPS = 0.01; //choose a tolerance for plane fitting, e.g. 1cm
 const double R_EPS = 0.05; // choose a tolerance for cylinder-fit outliers
@@ -665,7 +668,7 @@ int main(int argc, char** argv) {
                   
                     break;
                     
-                case FIND_ON_TABLE:
+                case FIND_ON_TABLE_A:
                     ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
                     //really, this is steps 0,1,2 and 3, above
 		    ROS_INFO("MODE 0: identifying plane based on patch selection...");

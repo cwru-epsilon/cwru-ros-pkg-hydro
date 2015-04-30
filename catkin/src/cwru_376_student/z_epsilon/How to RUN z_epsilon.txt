@@ -1,0 +1,43 @@
+In a single Window and BEFORE connecting remotely...
+	1) roscore
+	2) roslaunch industrial_robot_client robot_interface_download.launch robot_ip:=192.168.0.50
+	3) roslaunch cwru_urdf abby_w_arm_rviz.launch
+	4) roslaunch cwru_base start_abby_base.launch
+
+After that connect remotly using Reminna...
+
+Then on a new terminal, you can keep running the following
+	1) rosrun epsilon_arm irb120_int
+
+Then on a new terminal, start MOTION
+	1) roslaunch epsilon_dsg epsilon_dead_launcher.launch (keep running)
+(IF this method does not succeed, we will use TELEOP)
+
+After arriving in a good spot near the table, first check line of sight from rviz,
+close point cloud from rviz, go back to the irb120_int terminal and open a new TAB
+	2) rosrun epsilon_arm pcd_saver
+After the image is successfully saved, 
+keep in the same directory and rather the same terminal
+	3) rosrun epsilon_arm can_finder
+
+The job for running new programs is done :)
+------------------------------------------------------------------------------------
+We will first choose a good PATCH from rviz on the table. 
+Then run the trigger
+	rosservice call process_mode 5
+Check resulted model in rviz, make sure that it fits perfectly.
+Right now the center point above the can is sent to the irb120_int.
+
+Then process our goal point (move the arm towards that point)
+	rosservice call move_trigger 1
+This will lookup if there are available IK solutions for motion towards our goal point
+
+-------------------------------------
+Trigger Service for Arm Gribber HERE
+-------------------------------------   
+
+Once grapped the Can and the robot is back to its Transition Pose, Bring IT Home :)
+	rosservice call move_back 1
+
+THATS IT
+THANK YOU :)

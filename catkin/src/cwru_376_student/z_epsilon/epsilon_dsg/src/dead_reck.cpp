@@ -45,6 +45,9 @@ therefore, theta = 2*atan2(qz,qw)
 #include <math.h>
 #include <std_msgs/Bool.h>
 #include <string>
+#include <cwru_srv/simple_bool_service_message.h>
+#include <cwru_srv/simple_int_service_message.h> // this is a pre-defined service message, contained in shared "cwru_srv" package
+#include <cwru_srv/path_service_message.h>
 
 // set some dynamic limits...
 const double v_max = 0.6; //1m/sec is a fast walk (we decided to make it 0.6 for actual demo on Jinx)
@@ -85,6 +88,8 @@ bool spinCheck = true;
 bool incOdomPhi = false;
 double odom_phi_old = 0.0;
 double phiDiff;
+
+bool move_back = false;
 
 // receive odom messages and strip off the components we want to use
 // tested this OK w/ stdr
@@ -249,12 +254,18 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
             cmd_vel.linear.x = 0.0; // 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
+            if (dist_to_go <= seg_len*0.15) //So for 5.5 = 0.825 m So if less than that just return and get out of the function.
+                return segment_length_done;
             ros::spinOnce();
         }
+//        if (exit) {
+//            exit = false;
+//            break;
+//        }
         print_soft = true;
         print_hard = true;
         print_lidar = true;
-        cmd_vel.angular.z = -odom_twist_z*7; // to adjust robot drift..$
+        cmd_vel.angular.z = -odom_twist_z*7; // to adjust Abby's drift..$
         vel_cmd_publisher.publish(cmd_vel); // publish the command to /cmd_vel in Jinx 
         
         rtimer.sleep(); // sleep for remainder of timed iteration
@@ -404,6 +415,14 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
 	odom_twist_z = odom_rcvd.twist.twist.angular.z;
 }
 
+bool moveService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response)
+{
+    ROS_INFO("Move service callback activated");
+    response.resp = true; // boring, but valid response info
+    move_back=true; //inform "main" that we have a new goal!
+    return true;
+}
+
 int main(int argc, char **argv) {
 
     ros::init(argc, argv, "vel_sched_epsilon_v2"); // name of this node will be "vel_sched_epsilon"
@@ -412,13 +431,18 @@ int main(int argc, char **argv) {
     ros::Subscriber lidar_msg_sub = nh.subscribe("lidar_dist", 1, laserMsgCallback); // Subscribing to lider_dist, which is published or advertised by lidar_alarm_epsilon.cpp
     ros::Subscriber soft_estop = nh.subscribe("soft_estop", 1, softEstopCallback); // Subscribing to soft_estop, which is published by the user (manually on the terminal)
     ros::Subscriber hard_estop = nh.subscribe("hardware_estop", 1, hardEstopCallback); // Subscribing to hardware_estop, which is published by estop_listener_epsilon.cpp
-
+    ros::ServiceServer service = nh.advertiseService("move_back", moveService); 
 // here is a description of some segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
 
-    //masterLoop(nh, 5.5, false, 0.0);
-    //masterLoop(nh, 0.0, true, -3.00);
-    masterLoop(nh, 3.0, false, 0.0);
+    double dist_back = masterLoop(nh, 5.5, false, 0.0);
+    while(ros::ok()) {// Wait here until you get a trigger from user
+        if (move_back) break;
+        ros::spinOnce(); // Allow Callbacks to populate fresh data
+    }
+    ROS_WARN("Going Back HOME :) ");
+    masterLoop(nh, 0.0, true, -3.00);
+    masterLoop(nh, dist_back, false, 0.0);
     //masterLoop(nh, 0.0, true, -0.20);
     //masterLoop(nh, 4.5, false, 0.0);
 

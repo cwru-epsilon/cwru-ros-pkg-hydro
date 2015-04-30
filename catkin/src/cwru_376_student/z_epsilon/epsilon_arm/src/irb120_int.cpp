@@ -22,14 +22,14 @@
  #include <tf/transform_listener.h>
 
 //callback to subscribe to marker state
-Eigen::Vector3d g_p, g_p_above;
+Eigen::Vector3d g_p, g_p_above, g_p_front, g_p_right, g_p_left;
 Vectorq6x1 g_q_state;
 Vectorq6x1 home_state, trans_state; //= {0.0245981, -1.43767, 0.0514272, -0.13549, -0.363732, -0.0716817};
 
 double g_x,g_y,g_z;
 //geometry_msgs::Quaternion g_quat; // global var for quaternion
 Eigen::Quaterniond g_quat;
-Eigen::Matrix3d g_R, g_R_above;
+Eigen::Matrix3d g_R, g_R_above, g_R_front, g_R_right, g_R_left;
 Eigen::Affine3d g_A_flange_desired, g_A_flange_desired_a;
 bool g_trigger=false;
 
@@ -75,9 +75,6 @@ void markerListenerCB(
 }
 
 bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv::path_service_messageResponse& response) {
-    geometry_msgs::PoseStamped pose;
-    //double x, y, phi;
-    geometry_msgs::Quaternion quaternion;
     ROS_INFO("service append-Path callback activated");
     /* Path message:
      * #An array of poses that represents a Path for a robot to follow
@@ -88,7 +85,7 @@ bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv:
     g_marker_pose_in.pose=request.path.poses[0].pose;
     g_marker_pose_in.header.stamp=ros::Time::now();
     g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
-    ROS_INFO("Transformation Went Through...");
+    ROS_INFO("Transformation 1 Went Through...");
 
     g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
     g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
@@ -105,9 +102,8 @@ bool appendPoseService(cwru_srv::path_service_messageRequest& request, cwru_srv:
     g_marker_pose_in.pose=request.path.poses[0].pose;
     g_marker_pose_in.header.stamp=ros::Time::now();
     g_marker_pose_in.pose.position.z = g_marker_pose_in.pose.position.z + 0.2; //Here we added a transition trajectory 20 cm above the can
-
     g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
-    ROS_INFO("Transformation Went Through...");
+    ROS_INFO("Transformation 2 Went Through...");
 
     g_p_above[0] = g_marker_pose_wrt_arm_base.pose.position.x;
     g_p_above[1] = g_marker_pose_wrt_arm_base.pose.position.y;
@@ -127,16 +123,22 @@ const sensor_msgs::JointStatePtr &js_msg) {
     
 }
 
-bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response)
+bool triggerService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response)
 {
     ROS_INFO("service callback activated");
     response.resp = true; // boring, but valid response info
     // grab the most recent IM data and repackage it as an Affine3 matrix to set a target hand pose;
     g_A_flange_desired.translation() = g_p;
     g_A_flange_desired.linear() = g_R;
-    
-    g_A_flange_desired_a.translation() = g_p_above;
-    g_A_flange_desired_a.linear() = g_R_above;
+    Eigen::Vector3d chosen_pose;
+    Eigen::Matrix3d chosen_R;
+    int which = request.req;
+    if (which == 1) {chosen_pose = g_p_above; chosen_R = g_R_above;} // The Only ONE implemented right now...
+    else if (which == 2) {chosen_pose = g_p_front; chosen_R = g_R_front;} 
+    else if (which == 3) {chosen_pose = g_p_right; chosen_R = g_R_right;}
+    else if (which == 4) {chosen_pose = g_p_left; chosen_R = g_R_left;}
+    g_A_flange_desired_a.translation() = chosen_pose;
+    g_A_flange_desired_a.linear() = chosen_R;
     
     cout<<"g_p: "<<g_p.transpose()<<endl;
     cout<<"R: "<<endl;
