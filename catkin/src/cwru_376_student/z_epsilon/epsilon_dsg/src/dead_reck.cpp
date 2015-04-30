@@ -254,7 +254,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len, bool rotate, double rot_p
             cmd_vel.linear.x = 0.0; // 
             cmd_vel.angular.z = 0.0;
             vel_cmd_publisher.publish(cmd_vel);
-            if (dist_to_go <= seg_len*0.15) //So for 5.5 = 0.825 m So if less than that just return and get out of the function.
+            if (dist_to_go <= seg_len*0.20) //So for 5.5 = 0.825 m So if less than that just return and get out of the function.
                 return segment_length_done;
             ros::spinOnce();
         }
