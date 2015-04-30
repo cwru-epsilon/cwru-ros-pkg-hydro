@@ -37,6 +37,8 @@ Trigger Service for Arm Gribber HERE
 -------------------------------------   
 
 Once grapped the Can and the robot is back to its Transition Pose, Bring IT Home :)
+NOTE: It is better to use (rosrun epsilon_motion leave_table) first to back up 0.5m from the table #####
+Then :)
 	rosservice call move_back 1
 
 THATS IT

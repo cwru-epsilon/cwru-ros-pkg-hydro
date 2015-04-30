@@ -442,7 +442,7 @@ int main(int argc, char **argv) {
     }
     ROS_WARN("Going Back HOME :) ");
     masterLoop(nh, 0.0, true, -3.00);
-    masterLoop(nh, dist_back, false, 0.0);
+    masterLoop(nh, dist_back-0.5, false, 0.0); //0.5 travveled backwards using leave _table
     //masterLoop(nh, 0.0, true, -0.20);
     //masterLoop(nh, 4.5, false, 0.0);
 
