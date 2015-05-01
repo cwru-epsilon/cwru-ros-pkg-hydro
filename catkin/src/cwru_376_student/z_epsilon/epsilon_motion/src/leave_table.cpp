@@ -219,7 +219,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len) {
             }
             //new_cmd_vel = speedCompare(odom_vel_, 0.0, false); 
            //cmd_vel.linear.x = 0.0 
-            cmd_vel.angular.z = odom_twist_z*4;//*2;
+            cmd_vel.angular.z = odom_twist_z*6;//*2;
             vel_cmd_publisher.publish(cmd_vel);
             ros::spinOnce();
 	    //break;
@@ -227,7 +227,7 @@ double masterLoop(ros::NodeHandle& nh, double seg_len) {
         print_soft = true;
         print_hard = true;
         print_lidar = true;
-        if (direction < 0) cmd_vel.linear.x = cmd_vel.linear.x * 1.3;
+        //if (direction < 0) cmd_vel.linear.x = cmd_vel.linear.x * 1.3;
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
         rtimer.sleep(); // sleep for remainder of timed iteration
         if (dist_to_go <= 0.0) break; // halt this node when this segment is complete.

@@ -770,7 +770,7 @@ int main(int argc, char** argv) {
                         
                         g_cylinder_origin[i] = g_patch_centroid[i]; // Meaning Z the same as Patch Centroid..
                     }
-			g_cylinder_origin[0] = g_patch_centroid[0] + 0.07411; // Meaning Modify Y ONLY
+			g_cylinder_origin[0] = g_patch_centroid[0] + 0.08; // Meaning Modify Y ONLY
                     // fix the z-height, based on plane height:
                     g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
 		    g_cylinder_origin[2] = g_cylinder_origin[2] + H_CYLINDER + Z_EPS;
@@ -793,9 +793,9 @@ int main(int argc, char** argv) {
 			break;
 		    }
 		    else { // tolarances were figured out from by trials and error...
-			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
-			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
-                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
+			while((fabs(dEdCx) > 2e-5 || fabs(dEdCy) > 2e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			can_center_wrt_plane[0]+= 0.0 - dEdCx*4;
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*4; 
 
                     	ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
                     	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
@@ -873,9 +873,9 @@ int main(int argc, char** argv) {
 			break;
 		    }
 		    else { // tolarances were figured out from by trials and error...
-			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
-			can_center_wrt_plane[0]+= 0.0 - dEdCx*5;
-                        can_center_wrt_plane[1]+= 0.0 - dEdCy*5; 
+			while((fabs(dEdCx) > 2e-5 || fabs(dEdCy) > 2e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			can_center_wrt_plane[0]+= 0.0 - dEdCx*4;
+                        can_center_wrt_plane[1]+= 0.0 - dEdCy*4; 
 
                     	ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
                     	compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
@@ -954,7 +954,7 @@ int main(int argc, char** argv) {
 			break;
 		    }
 		    else { // tolarances were figured out from by trials and error...
-			while((fabs(dEdCx) > 5e-6 || fabs(dEdCy) > 5e-6 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
+			while((fabs(dEdCx) > 2e-5 || fabs(dEdCy) > 2e-5 ||  fabs(E) > 0.000255) && ros::ok()) { //fabs(E) > 2e-5
 			can_center_wrt_plane[0]+= 0.0 - dEdCx*4;
                         can_center_wrt_plane[1]+= 0.0 - dEdCy*4; 
 
