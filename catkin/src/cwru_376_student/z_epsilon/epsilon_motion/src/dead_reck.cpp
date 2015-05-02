@@ -4,7 +4,6 @@
 // Dr. Wyatt Newman
 // Engr. Luc Battaieb
 
-// This project is one of EECS378 Mobile Robotics assignments, Spring 2015.
 
 // This project was edited in order to modulate the velocity (linear and angular) commands 
 // to comply with a speed limit, v_max and omega_max, acceleration limits, +/-a_max and +/-alpha_max,
@@ -435,11 +434,14 @@ int main(int argc, char **argv) {
 // here is a description of some segments of a journey.
 // define the desired path length of this segment and wither or not their was needed a rotation (both moving forward and rotation cannot happen at once)
 
+    double dist_back = masterLoop(nh, 5.5, false, 0.0);
+    ROS_WARN("Done With First Part.");
+    while(ros::ok() && !move_back) {// Wait here until you get a trigger from user
+        ros::spinOnce(); // Allow Callbacks to populate fresh data
+   	}
     ROS_WARN("Going Back HOME :) ");
     masterLoop(nh, 0.0, true, -3.00);
-    masterLoop(nh, 3.5, false, 0.0); //0.5 travveled backwards using leave _table
-    //masterLoop(nh, 0.0, true, -0.20);
-    //masterLoop(nh, 4.5, false, 0.0);
+    masterLoop(nh, dist_back-0.5, false, 0.0); //0.5 traveled backwards using leave_table
 
     ROS_INFO("completed move distance");
 }

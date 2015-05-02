@@ -10,7 +10,7 @@ Then on a new terminal, you can keep running the following
 	1) rosrun epsilon_arm irb120_int
 
 Then on a new terminal, start MOTION
-	1) roslaunch epsilon_dsg epsilon_dead_launcher.launch (keep running)
+	1) roslaunch epsilon_motion epsilon_dead_launcher.launch (keep running)
 (IF this method does not succeed, we will use TELEOP)
 
 After arriving in a good spot near the table, first check line of sight from rviz,

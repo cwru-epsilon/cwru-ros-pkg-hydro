@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>epsilon_motion</name>
-  <version>0.0.0</version>
+  <version>1.0.0</version>
   <description>The epsilon_motion package</description>
   
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
@@ -44,14 +44,18 @@
 <build_depend>geometry_msgs</build_depend>
 <build_depend>nav_msgs</build_depend>
 <build_depend>std_msgs</build_depend>
-<build_depend>tf</build_depend>
+<build_depend>cwru_srv</build_depend>
+<build_depend>cwru_msgs</build_depend>
 <build_depend>eigen</build_depend>
+<build_depend>tf</build_depend>
   <run_depend>roscpp</run_depend>
 <run_depend>geometry_msgs</run_depend>
 <run_depend>nav_msgs</run_depend>
 <run_depend>std_msgs</run_depend>
-<run_depend>tf</run_depend>
+<run_depend>cwru_srv</run_depend>
+<run_depend>cwru_msgs</run_depend>
 <run_depend>eigen</run_depend>
+<run_depend>tf</run_depend>
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->

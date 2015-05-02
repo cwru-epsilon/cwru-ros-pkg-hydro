@@ -18,11 +18,10 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 # cs_add_libraries(my_lib src/my_lib.cpp)   
 
 # Executables
-cs_add_executable(approach_table src/approach_table.cpp)
+cs_add_executable(estop_listener src/estop_listener.cpp)
+cs_add_executable(lidar_alarm src/lidar_alarm.cpp)
+cs_add_executable(dead_reck src/dead_reck.cpp)
 cs_add_executable(leave_table src/leave_table.cpp)
-cs_add_executable(epsilon_steering src/epsilon_steering.cpp)
-cs_add_executable(epsilon_steering_odom src/epsilon_steering_odom.cpp)
-#cs_add_executable(example_steering_algorithm2 src/example_steering_algorithm_hidden.cpp)
 # target_link_library(example my_lib)
 
 cs_install()
